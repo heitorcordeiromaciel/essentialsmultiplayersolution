@@ -8,7 +8,7 @@ Since the original plugin is no longer maintained, this fork aims to:
 
 ---
 
-## 🧩 Feature Progress
+## Feature Progress
 
 - [x] Z-Move Support (DBK Z-Power)
 - [x] Dynamax Support (DBK Dynamax)
@@ -23,7 +23,7 @@ Since the original plugin is no longer maintained, this fork aims to:
 
 ---
 
-## 🧠 Credits
+## Credits
 
 All credit goes to **Voltseon** for the original plugin.  
 This fork is **not intended to replace** the official plugin, it only exists because the original is no longer being updated.  
