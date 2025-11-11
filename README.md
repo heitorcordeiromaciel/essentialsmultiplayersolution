@@ -34,26 +34,22 @@ Download the latest version of the plugin from the **[Releases](../../releases)*
 
 Extract the downloaded `.zip` file and move the following into your game project:
 
+```
 Client/ → [YourGame]/Plugins/
-
 multiplayer.ini → [YourGame]/
-
+```
 
 Your final project structure should look like this:
 
+```
 YourGame/
-
 ├── Game.exe
-
 ├── Data/
-
 ├── Plugins/
-
 │ ├── OtherPlugins/
-
 │ └── Multiplayer/ # The client folder from this plugin
-
 └── multiplayer.ini
+```
 
 #### 2.1 Client Connection configuration
 
@@ -67,25 +63,17 @@ If this file is missing, the client defaults to `127.0.0.1:25565`.
 Pre-packaged server builds are included for both **Windows** and **Linux**, and include a standalone Ruby installation
 
 ### Folder Structure
-
+```
 Server/
-
 ├── ruby/ # standalone ruby installation for the server to run on
-
 ├── Server.rb
-
 ├── Config.rb
-
 ├── Player.rb
-
 ├── Cluster.rb
-
 ├── config.ini
-
 ├── start.bat # For Windows
-
 └── start.sh # For Linux
-
+```
 ### ⚙️ Configuration
 The server reads settings from `config.ini`.  
 You can edit it with any text editor:
