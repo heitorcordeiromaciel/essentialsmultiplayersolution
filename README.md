@@ -24,8 +24,6 @@ Since the original plugin is no longer maintained, this fork aims to:
 
 ---
 
----
-
 ## Installation and Setup
 
 ### 1. Downloading the plugin
@@ -37,6 +35,7 @@ Download the latest version of the plugin from the **[Releases](../../releases)*
 Extract the downloaded `.zip` file and move the following into your game project:
 
 Client/ → [YourGame]/Plugins/
+
 multiplayer.ini → [YourGame]/
 
 
