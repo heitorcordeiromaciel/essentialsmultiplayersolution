@@ -43,6 +43,8 @@ module VMS
   # ===========
   # Whether or not to use TCP instead of UDP. TCP is more reliable, but UDP is faster.
   USE_TCP = false
+  # The maximum number of players allowed in the integrated server.
+  MAX_PLAYERS = 4
   
   # ===========
   # Connection

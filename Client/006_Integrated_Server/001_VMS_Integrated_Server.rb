@@ -157,7 +157,7 @@ module VMS
         end
         
         # Check player limit
-        max_players = VMS::Config.max_players rescue 4
+        max_players = VMS::MAX_PLAYERS rescue 4
         if cluster.player_count < max_players
           cluster.add_player(player = Player.new(data[VMS::PACKET_KEYS[:id]], address, port))
           player.socket = socket
