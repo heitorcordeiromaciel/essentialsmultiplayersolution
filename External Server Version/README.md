@@ -47,7 +47,7 @@ YourGame/
 ├── Data/
 ├── Plugins/
 │ ├── OtherPlugins/
-│ └── Client/ # The client folder from this plugin
+│ └── Voltseon's Multiplayer Solution/ # located inside the client folder
 └── multiplayer.ini
 ```
 
