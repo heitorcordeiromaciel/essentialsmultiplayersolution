@@ -11,14 +11,14 @@ Since the original plugin is no longer maintained, this fork aims to:
 - Implement modern gameplay features
 - Improve ease of use for self-hosted servers (no Ruby installation required)
 
-This fork has been merged into the official Voltseon's Multiplayer Solution plugin, which you can also get from the [official EeveeExpo page](https://eeveeexpo.com/resources/1453/).
+This fork has been merged into the official Voltseon's Multiplayer Solution plugin.
 
 ---
 
 ## Installation and Setup
 
-- [Integrated Server Version Installation Guide](./Integrated Server Version/Installation.md)
-- [External Server Version Installation Guide](./External Server Version/Installation.md)
+- [Integrated Server Version Installation Guide](<./Integrated Server Version/Installation.md>)
+- [External Server Version Installation Guide](<./External Server Version/Installation.md>)
 
 ---
 
