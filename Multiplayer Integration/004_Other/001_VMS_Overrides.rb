@@ -369,12 +369,12 @@ MenuHandlers.add(:pause_menu, :vms, {
     when 0 # Host Game
       VMS::IntegratedServer.start
       VMS.target_host = "127.0.0.1"
-      VMS.join(0) # Hardlock to Cluster 0
+      VMS.join(0)
     when 1 # Join Server
       ip = pbEnterBoxName(_INTL("Enter Server IPv4"), 0, 15, VMS.target_host)
       if !ip.nil? && ip != ""
         VMS.target_host = ip
-        VMS.join(0) # Hardlock to Cluster 0
+        VMS.join(0)
       else
         menu.pbShowMenu
         menu.pbRefresh

@@ -2,30 +2,9 @@ module VMS
   # ===========
   # Debug 
   # ===========
-  DEFAULT_HOST = "127.0.0.1"
-  DEFAULT_PORT = 25565
 
-  exe_dir = File.expand_path(File.dirname($0))
-  config_path = File.join(exe_dir, "multiplayer.ini")
-  host = DEFAULT_HOST
-  port = DEFAULT_PORT
-
-  if File.exist?(config_path)
-    File.readlines(config_path).each do |line|
-      line.strip!
-      next if line.empty? || line.start_with?("#")
-      key, value = line.split("=", 2)
-      case key.downcase
-      when "host"
-        host = value
-      when "port"
-        port = value.to_i
-      end
-    end
-  end
-
-  HOST = host
-  PORT = port
+  # Default port for hosting, integrated server is always hosted on 0.0.0.0:PORT.
+  PORT = 25565
   
   # The current target IP for connecting. Can be changed at runtime.
   class << self
@@ -58,6 +37,7 @@ module VMS
   # The timeout in seconds. If the server does not respond within this time, the client will disconnect.
   TIMEOUT_SECONDS = 30
   # Whether or not to sync the seed with the server. This means that all players will have the same random numbers.
+  HEARTBEAT_TIMEOUT = 30
   SEED_SYNC = false
   
   # ===========

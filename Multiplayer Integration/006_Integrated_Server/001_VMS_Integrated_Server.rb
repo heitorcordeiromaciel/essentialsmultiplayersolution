@@ -17,7 +17,7 @@ module VMS
           @running = false
         end
       end
-      VMS.log("Integrated Server started on port 25565")
+      VMS.log("Integrated Server started on port #{PORT}")
     end
 
     def self.stop
@@ -29,13 +29,13 @@ module VMS
 
     class Server
       def initialize
-        @port = 25565
+        @port = PORT
         @host = '0.0.0.0'
         @clusters = {}
         @clients = {}
-        @tick_rate = 30
-        @heartbeat_timeout = 30
-        @use_tcp = false # Defaulting to UDP for co-op speed
+        @tick_rate = TICK_RATE
+        @heartbeat_timeout = HEARTBEAT_TIMEOUT
+        @use_tcp = USE_TCP
         
         if @use_tcp
           @socket = TCPServer.new(@host, @port)
