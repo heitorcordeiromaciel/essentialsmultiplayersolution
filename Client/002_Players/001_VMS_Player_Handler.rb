@@ -92,15 +92,16 @@ module VMS
       when :battle
         battle_type = player.state[2] == :double ? VMS::BATTLE_TYPE_DOUBLE : VMS::BATTLE_TYPE_SINGLE
         battle_size = player.state[3]
+        battle_seed = player.state[4] # Get seed from initiator
         if pbConfirmMessage(_INTL(VMS::INTERACTION_BATTLE_MESSAGE, player_name, "#{battle_type} (#{battle_size}v#{battle_size})"))
-          $game_temp.vms[:state] = [:battle, player.id, player.state[2], player.state[3]]
+          $game_temp.vms[:state] = [:battle, player.id, player.state[2], player.state[3], battle_seed]
           if !VMS.await_player_state(player, :battle, _INTL(VMS::INTERACTION_WAIT_RESPONSE_MESSAGE, player_name))
             if player.state[1] != $player.id
               VMS.message(_INTL(VMS::INTERACTION_CANCEL_MESSAGE, player_name))
               return
             end
           end
-          VMS.start_battle(player, player.state[2], player.state[3])
+          VMS.start_battle(player, player.state[2], player.state[3], battle_seed)
         else
           $game_temp.vms[:state] = [:idle, nil]
         end
@@ -222,14 +223,15 @@ module VMS
           next
         end
         # Set state to battle with player
-        $game_temp.vms[:state] = [:battle, id, type, size]
+        battle_seed = rand(1000000...9999999)
+        $game_temp.vms[:state] = [:battle, id, type, size, battle_seed]
         if !VMS.await_player_state(player, :battle, _INTL(VMS::INTERACTION_WAIT_RESPONSE_MESSAGE, player_name))
           if player.state[1] != $player.id
             VMS.message(_INTL(VMS::INTERACTION_CANCEL_MESSAGE, player_name))
             return
           end
         end
-        VMS.start_battle(player, type, size)
+        VMS.start_battle(player, type, size, battle_seed)
         break
       when 3 # Cancel
         # Set state to idle

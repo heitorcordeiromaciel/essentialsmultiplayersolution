@@ -316,15 +316,6 @@ module RPG
   end
 end
 
-class Battle::Scene
-  alias vms_pbUpdate pbUpdate unless method_defined?(:vms_pbUpdate)
-  
-  def pbUpdate(cw = nil)
-    VMS.update if VMS.is_connected?
-    vms_pbUpdate(cw)
-  end
-end
-
 class PokemonRegionMap_Scene
   alias vms_pbUpdate pbUpdate unless method_defined?(:vms_pbUpdate)
 

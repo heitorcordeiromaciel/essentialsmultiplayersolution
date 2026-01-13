@@ -1,25 +1,27 @@
 module VMS
-  def self.start_battle(player, type = :single, size = 6)
+  def self.start_battle(player, type = :single, size = 6, seed = nil)
     begin
       # In start_battle
-      seed_str = VMS.get_cluster_id.to_s
-      if $player.id < player.id
-        seed_str += hash_pokemon($player.party).to_s
-        seed_str += hash_pokemon(player.party).to_s
-      else
-        seed_str += hash_pokemon(player.party).to_s
-        seed_str += hash_pokemon($player.party).to_s
+      if seed.nil?
+        seed_str = VMS.get_cluster_id.to_s
+        if $player.id < player.id
+          seed_str += hash_pokemon($player.party).to_s
+          seed_str += hash_pokemon(player.party).to_s
+        else
+          seed_str += hash_pokemon(player.party).to_s
+          seed_str += hash_pokemon($player.party).to_s
+        end
+        seed = VMS.string_to_integer(seed_str)
       end
 
-      seed_int = VMS.string_to_integer(seed_str)  # already integer
-      srand(seed_int)
-      $game_temp.vms[:seed] = seed_int  # MUST store integer
+      $game_temp.vms[:seed] = seed
       $game_temp.vms[:battle_player] = player
       $game_temp.vms[:battle_type] = type
       
       # Party Selection Phase
       local_indices = (0...$player.party.length).to_a
-      if size > 1 && size <= $player.party.length
+      # Always show selection screen for ordering, unless party is empty (which shouldn't happen)
+      if $player.party.length > 0
         new_party = nil
         ruleset = PokemonRuleSet.new
         ruleset.setNumber(size)
@@ -49,16 +51,27 @@ module VMS
       # Filter parties
       full_opponent_party = VMS.update_party(player)
       filtered_opponent_party = []
-      opponent_indices.each { |i| filtered_opponent_party.push(full_opponent_party[i]) }
+      if opponent_indices.is_a?(Array)
+        opponent_indices.each do |i|
+          pkmn = full_opponent_party[i]
+          filtered_opponent_party.push(pkmn) if pkmn
+        end
+      end
       
       old_party = $player.party.dup
       filtered_local_party = []
-      local_indices.each { |i| filtered_local_party.push($player.party[i]) }
+      local_indices.each do |i|
+        pkmn = $player.party[i]
+        filtered_local_party.push(pkmn) if pkmn
+      end
       $player.party = filtered_local_party
       
       trainer = NPCTrainer.new(player.name, player.trainer_type, 0)
-      trainer.id = player.id
+      # trainer.id = player.id # Removed to prevent trainer type ID conflicts
       trainer.party = filtered_opponent_party
+      
+      # Re-seed right before battle starts to prevent UI-induced drift
+      srand($game_temp.vms[:seed])
       
       TrainerBattle.start_core_VMS(trainer)
       
@@ -78,16 +91,20 @@ module VMS
   end
 end
 
-class Battle
-  def battleAI=(value)
-    @battleAI = value
+  alias vms_initialize initialize unless method_defined?(:vms_initialize)
+  def initialize(*args)
+    vms_initialize(*args)
+    @vms_random_calls = 0
   end
 
   def pbRandom(x)
     if VMS.is_connected? && !@internalBattle && !$game_temp.vms[:battle_player].nil?
       seed = $game_temp.vms[:seed]
-      seed = seed.to_i unless seed.is_a?(Integer)  # force integer just in case
-      srand(seed + @turnCount)
+      seed = seed.to_i unless seed.is_a?(Integer)
+      @vms_random_calls ||= 0
+      @vms_random_calls += 1
+      # Use turnCount and call counter to ensure unique but synced results
+      srand(seed + (@turnCount * 1000) + @vms_random_calls)
       return rand(x)
     end
     return rand(x)
@@ -95,6 +112,7 @@ class Battle
 
   alias vms_pbCommandPhaseLoop pbCommandPhaseLoop unless method_defined?(:vms_pbCommandPhaseLoop)
   def pbCommandPhaseLoop(isPlayer)
+    @vms_random_calls = 0 if isPlayer # Reset counter for the new turn
     vms_pbCommandPhaseLoop(isPlayer)
     if VMS.is_connected? && isPlayer
       picks = @choices.map do |choice|
@@ -187,11 +205,14 @@ class Battle
     def pbDefaultChooseEnemyCommand(idxBattler)
       set_up(idxBattler)
       ret = false
-      player = $game_temp.vms[:battle_player]
-      player_name = player.name
+      player_info = $game_temp.vms[:battle_player]
+      player_name = player_info.name
       msgwindow = @battle.scene.sprites["messageWindow"]
+      
+      # Turn Buffering: Check if we already have the command for this turn
+      # (The opponent might have sent it while we were still playing animations)
       loop do
-        player = VMS.get_player(player.id)
+        player = VMS.get_player(player_info.id)
         if player.nil?
           @battle.pbDisplayPaused(_INTL("{1} has disconnected...", player_name))
           @battle.decision = 1
@@ -214,39 +235,50 @@ class Battle
           @battle.decision = 1
           return
         end
-        if player.state&.length >= 3 && player.state[2] == @battle.turnCount
-          msgwindow.visible = false
-          msgwindow.setText("")
-          opp_idx = (idxBattler == 1) ? 0 : 2
-          if player.state.length >= 4 && player.state[3]&.length > opp_idx && player.state[3][opp_idx]&.length >= 1
-            case player.state[3][opp_idx][0]
-            when :SwitchOut
-              @battle.pbRegisterSwitch(idxBattler, player.state[3][opp_idx][1])
-              return
-            when :UseItem
-              @battle.pbRegisterItem(idxBattler, player.state[3][opp_idx][1], player.state[3][opp_idx][2], player.state[3][opp_idx][3])
-              return
-            when :UseMove
-              target = player.state[3][opp_idx][3]
-              if @battle.pbSideSize(0) > 1 && target.is_a?(Integer) && target >= 0
-                target = case target
-                         when 0 then 1
-                         when 1 then 0
-                         when 2 then 3
-                         when 3 then 2
-                         else target
-                         end
+
+        # State validation: Ensure we are looking at a battle_command for the CURRENT or FUTURE turn
+        if player.state&.length >= 3 && player.state[0] == :battle_command
+          opp_turn = player.state[2]
+          
+          # If opponent is on the same turn, process it
+          if opp_turn == @battle.turnCount
+            msgwindow.visible = false
+            msgwindow.setText("")
+            opp_idx = (idxBattler == 1) ? 0 : 2
+            if player.state.length >= 4 && player.state[3]&.length > opp_idx && player.state[3][opp_idx]&.length >= 1
+              case player.state[3][opp_idx][0]
+              when :SwitchOut
+                @battle.pbRegisterSwitch(idxBattler, player.state[3][opp_idx][1])
+                return
+              when :UseItem
+                @battle.pbRegisterItem(idxBattler, player.state[3][opp_idx][1], player.state[3][opp_idx][2], player.state[3][opp_idx][3])
+                return
+              when :UseMove
+                target = player.state[3][opp_idx][3]
+                if @battle.pbSideSize(0) > 1 && target.is_a?(Integer) && target >= 0
+                  target = case target
+                           when 0 then 1
+                           when 1 then 0
+                           when 2 then 3
+                           when 3 then 2
+                           else target
+                           end
+                end
+                @battle.pbRegisterMove(idxBattler, player.state[3][opp_idx][1], false)
+                @battle.pbRegisterTarget(idxBattler, target)
+                @battle.pbRegisterMegaEvolution(idxBattler) if player.state.length > 4 && player.state[4] == opp_idx
+                @battle.pbRegisterZMove(idxBattler) if player.state.length > 5 && player.state[5] == opp_idx
+                @battle.pbRegisterDynamax(idxBattler) if player.state.length > 6 && player.state[6] == opp_idx
+                @battle.pbRegisterTerastallize(idxBattler) if player.state.length > 7 && player.state[7] == opp_idx
+                return
               end
-              @battle.pbRegisterMove(idxBattler, player.state[3][opp_idx][1], false)
-              @battle.pbRegisterTarget(idxBattler, target)
-              @battle.pbRegisterMegaEvolution(idxBattler) if player.state.length > 4 && player.state[4] == opp_idx
-              @battle.pbRegisterZMove(idxBattler) if player.state.length > 5 && player.state[5] == opp_idx
-              @battle.pbRegisterDynamax(idxBattler) if player.state.length > 6 && player.state[6] == opp_idx
-              @battle.pbRegisterTerastallize(idxBattler) if player.state.length > 7 && player.state[7] == opp_idx
-              return
             end
+          elsif opp_turn < @battle.turnCount
+            # Opponent is behind, we must wait for them to catch up
+            # This shouldn't happen often if both are in sync
           end
         end
+
         if msgwindow.text == ""
           @battle.scene.pbShowWindow(Battle::Scene::MESSAGE_BOX)
           msgwindow.visible = true
