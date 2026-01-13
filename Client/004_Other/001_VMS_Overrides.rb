@@ -363,51 +363,24 @@ MenuHandlers.add(:pause_menu, :vms, {
   "condition" => proc { VMS::ACCESSIBLE_PROC.call && VMS::ACCESSIBLE_FROM_PAUSE_MENU && !VMS.is_connected? },
   "effect"    => proc { |menu|
     menu.pbHideMenu
-    choices = ["Create cluster", "Browse clusters", "Host Game", "Set Server IP", "Cancel"]
+    choices = ["Host Game", "Join Server", "Set Server IP", "Cancel"]
     choice = VMS.message(VMS::MENU_CHOICES_MESSAGE, choices)
     case choice
-    when 0 # Create cluster
-      VMS.join(rand(10000...99999))
-    when 1 # Browse clusters
-      # Get cluster list from server
-      clusters = VMS.get_cluster_list
-      
-      if clusters.empty?
-        # No clusters available
-        if pbConfirmMessage(VMS::NO_CLUSTERS_AVAILABLE_MESSAGE)
-          VMS.join(rand(10000...99999))
-        else
-          menu.pbShowMenu
-          menu.pbRefresh
-          next false
-        end
-      else
-        # Build choice list with cluster info
-        cluster_choices = []
-        clusters.each do |cluster|
-          cluster_choices.push("Cluster #{cluster[:id]} (#{cluster[:player_count]}/#{VMS::Config.max_players rescue 4} players)")
-        end
-        cluster_choices.push("Cancel")
-        
-        # Show cluster selection
-        cluster_choice = VMS.message(VMS::SELECT_CLUSTER_MESSAGE, cluster_choices)
-        
-        if cluster_choice >= 0 && cluster_choice < clusters.length
-          # Join selected cluster
-          selected_cluster = clusters[cluster_choice]
-          VMS.join(selected_cluster[:id])
-        else
-          # Cancel
-          menu.pbShowMenu
-          menu.pbRefresh
-          next false
-        end
-      end
-    when 2 # Host Game
+    when 0 # Host Game
       VMS::IntegratedServer.start
       VMS.target_host = "127.0.0.1"
-      VMS.join(rand(10000...99999))
-    when 3 # Set Server IP
+      VMS.join(0) # Hardlock to Cluster 0
+    when 1 # Join Server
+      params = [["Server IP", 0, 15, VMS.target_host]]
+      if pbEntryTextWindow(_INTL("Enter Server IPv4"), params)
+        VMS.target_host = params[0][3]
+        VMS.join(0) # Hardlock to Cluster 0
+      else
+        menu.pbShowMenu
+        menu.pbRefresh
+        next false
+      end
+    when 2 # Set Server IP
       params = [["Server IP", 0, 15, VMS.target_host]]
       if pbEntryTextWindow(_INTL("Enter Server IPv4"), params)
         VMS.target_host = params[0][3]
@@ -416,7 +389,7 @@ MenuHandlers.add(:pause_menu, :vms, {
       menu.pbShowMenu
       menu.pbRefresh
       next false
-    when 4 # Cancel
+    when 3 # Cancel
       menu.pbShowMenu
       menu.pbRefresh
       next false

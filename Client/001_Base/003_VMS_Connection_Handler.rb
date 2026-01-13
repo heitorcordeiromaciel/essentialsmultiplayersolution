@@ -38,6 +38,7 @@ module VMS
 
   # Usage: VMS.leave (disconnects from the server)
   def self.leave(show_message = true)
+    VMS::IntegratedServer.stop if defined?(VMS::IntegratedServer)
     if $game_temp.vms[:socket].nil? # Not connected
       VMS.log("Not connected to a server") if show_message
       return

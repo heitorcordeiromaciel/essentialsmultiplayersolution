@@ -165,7 +165,8 @@ module VMS
       player = Player.new(data[PACKET_KEYS[:id]], address, port)
       player.socket = socket
       
-      cluster_id = data[PACKET_KEYS[:cluster_id]] || 0
+      # Hardlock to Cluster 0
+      cluster_id = 0
       if cluster_exists(cluster_id)
         cluster = @clusters.values.find { |c| c.id == cluster_id }
         if cluster.player_count < Config.max_players

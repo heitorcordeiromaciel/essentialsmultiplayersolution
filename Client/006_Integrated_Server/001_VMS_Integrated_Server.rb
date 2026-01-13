@@ -147,18 +147,25 @@ module VMS
       end
 
       def connect(address, port, data, socket = nil)
-        player = Player.new(data[VMS::PACKET_KEYS[:id]], address, port)
-        player.socket = socket
-        
-        cluster_id = data[VMS::PACKET_KEYS[:cluster_id]] || 0
+        # Hardlock to Cluster 0
+        cluster_id = 0
         cluster = @clusters[cluster_id]
+        
         if cluster.nil?
           cluster = Cluster.new(cluster_id, self)
           @clusters[cluster_id] = cluster
         end
         
-        cluster.add_player(player)
-        player.update(data)
+        # Check player limit
+        max_players = VMS::Config.max_players rescue 4
+        if cluster.player_count < max_players
+          cluster.add_player(player = Player.new(data[VMS::PACKET_KEYS[:id]], address, port))
+          player.socket = socket
+          player.update(data)
+        else
+          VMS.log("Connection rejected: Cluster 0 is full", true)
+          # Optionally send a 'full' packet if you have one defined
+        end
       end
 
       def disconnect(address, port, data, socket = nil)
