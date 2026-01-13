@@ -105,24 +105,29 @@ module VMS
     def sanitize_data(data)
       return {} unless data.is_a?(Hash)
       sanitized = {}
-      # Define expected types for critical fields
+      # Define expected types for critical fields using integer keys
       expected = {
-        :id => Integer,
-        :cluster_id => Integer,
-        :name => String,
-        :map_id => Integer,
-        :x => Integer,
-        :y => Integer,
-        :real_x => Numeric,
-        :real_y => Numeric,
-        :direction => Integer,
-        :pattern => Integer,
-        :graphic => String,
-        :heartbeat => Time
+        PACKET_KEYS[:id] => Integer,
+        PACKET_KEYS[:cluster_id] => Integer,
+        PACKET_KEYS[:name] => String,
+        PACKET_KEYS[:map_id] => Integer,
+        PACKET_KEYS[:x] => Integer,
+        PACKET_KEYS[:y] => Integer,
+        PACKET_KEYS[:real_x] => Numeric,
+        PACKET_KEYS[:real_y] => Numeric,
+        PACKET_KEYS[:direction] => Integer,
+        PACKET_KEYS[:pattern] => Integer,
+        PACKET_KEYS[:graphic] => String,
+        PACKET_KEYS[:heartbeat] => Time
       }
       
       data.each do |k, v|
-        key = k.to_sym rescue k.to_s.to_sym
+        # Convert key to integer if it's a string/symbol that matches our mapping
+        key = k
+        if k.is_a?(String) || k.is_a?(Symbol)
+          key = PACKET_KEYS[k.to_sym] || k
+        end
+
         if expected.key?(key)
           # Only keep if type matches (or can be converted)
           if v.is_a?(expected[key])
@@ -135,7 +140,7 @@ module VMS
             sanitized[key] = v.to_s
           end
         else
-          # Pass through other fields (like party, state) but ensure they aren't nil unless allowed
+          # Pass through other fields (like party, state)
           sanitized[key] = v
         end
       end
@@ -144,21 +149,23 @@ module VMS
 
     def connect(address, port, data, socket = nil)
       if Config.check_game_and_version
-        if data[:game_name] != Config.game_name && data[:game_name] != "" && !data[:game_name].nil?
-          log("#{get_player_name(data)} tried to connect to cluster #{data[:cluster_id]}, but they were using the wrong game (#{data[:game_name]}).")
+        game_name = data[PACKET_KEYS[:game_name]]
+        game_version = data[PACKET_KEYS[:game_version]]
+        if game_name != Config.game_name && game_name != "" && !game_name.nil?
+          log("#{get_player_name(data)} tried to connect to cluster #{data[PACKET_KEYS[:cluster_id]]}, but they were using the wrong game (#{game_name}).")
           send(:disconnect_wrong_game, address, port, socket)
           return
-        elsif data[:game_version] != Config.game_version && data[:game_version] != "" && !data[:game_version].nil?
-          log("#{get_player_name(data)} tried to connect to cluster #{data[:cluster_id]}, but they were using the wrong version (#{data[:game_version]}).")
+        elsif game_version != Config.game_version && game_version != "" && !game_version.nil?
+          log("#{get_player_name(data)} tried to connect to cluster #{data[PACKET_KEYS[:cluster_id]]}, but they were using the wrong version (#{game_version}).")
           send(:disconnect_wrong_version, address, port, socket)
           return
         end
       end
       
-      player = Player.new(data[:id], address, port)
+      player = Player.new(data[PACKET_KEYS[:id]], address, port)
       player.socket = socket
       
-      cluster_id = data[:cluster_id] || 0
+      cluster_id = data[PACKET_KEYS[:cluster_id]] || 0
       if cluster_exists(cluster_id)
         cluster = @clusters.values.find { |c| c.id == cluster_id }
         if cluster.player_count < Config.max_players
@@ -179,11 +186,11 @@ module VMS
     end
 
     def disconnect(address, port, data, socket = nil)
-      cluster_id = data[:cluster_id]
+      cluster_id = data[PACKET_KEYS[:cluster_id]]
       if cluster_exists(cluster_id)
         cluster = @clusters.values.find { |c| c.id == cluster_id }
         if cluster.has_player(address, port)
-          cluster.remove_player(data[:id])
+          cluster.remove_player(data[PACKET_KEYS[:id]])
           log("#{get_player_name(data)} disconnected from cluster #{cluster_id}.")
         else
           log("#{get_player_name(data)} tried to disconnect from cluster #{cluster_id}, but they weren't connected.")
@@ -195,20 +202,21 @@ module VMS
     end
 
     def update(address, port, data, socket = nil)
-      cluster_id = data[:cluster_id]
+      cluster_id = data[PACKET_KEYS[:cluster_id]]
       if cluster_exists(cluster_id)
         cluster = @clusters.values.find { |c| c.id == cluster_id }
         if cluster.has_player(address, port)
-          if !data[:online_variables].nil?
-            data[:online_variables].each do |key, value|
+          ov_key = PACKET_KEYS[:online_variables]
+          if !data[ov_key].nil?
+            data[ov_key].each do |key, value|
               next if cluster.online_variables[key] == value
               log("#{get_player_name(data)} updated online variable #{key} to #{value}.")
               cluster.online_variables[key] = value
               cluster.variables_dirty = true
             end
           end
-          cluster.players[data[:id]].update(data)
-          cluster.players[data[:id]].socket = socket if socket
+          cluster.players[data[PACKET_KEYS[:id]]].update(data)
+          cluster.players[data[PACKET_KEYS[:id]]].socket = socket if socket
         else
           log("#{get_player_name(data)} tried to update cluster #{cluster_id}, but they weren't connected.", true)
         end
@@ -249,7 +257,7 @@ module VMS
     end
 
     def get_player_name(data)
-      return "Player #{data[:name]} (#{data[:id]})"
+      return data[PACKET_KEYS[:name]] || "Unknown Player"
     end
 
     def cluster_exists(id)

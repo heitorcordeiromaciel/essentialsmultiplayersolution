@@ -148,32 +148,34 @@ module VMS
 
   # Usage: VMS.process(data #<Hash>) (processes data received from the server)
   def self.process(data)
-    # Sync seed
-    VMS.sync_seed if VMS::SEED_SYNC && $game_temp.vms[:battle_player].nil?
-    # Iterate through players
-    data.each do |pl|
-      # Check for online variables
-      if pl[0] == :online_variables
-        $game_temp.vms[:online_variables] = pl[1]
-        next
-      end
-      # Get player
-      id = pl["id"]
-      player = $game_temp.vms[:players][id]
-      is_self = id == $player.id
-      if player.nil? # Player doesn't exist yet
-        # Create player
-        $game_temp.vms[:players][id] = VMS::Player.new(id, "", 0)
+      # Sync seed
+      VMS.sync_seed if VMS::SEED_SYNC && $game_temp.vms[:battle_player].nil?
+      # Iterate through players
+      data.each do |pl|
+        # Check for online variables
+        if pl[0] == :online_variables
+          $game_temp.vms[:online_variables] = pl[1]
+          next
+        end
+        # Get player
+        id_key = VMS::PACKET_KEYS[:id]
+        hb_key = VMS::PACKET_KEYS[:heartbeat]
+        id = pl[id_key]
         player = $game_temp.vms[:players][id]
-      end
-      # Update ping if this is the player
-      $game_temp.vms[:ping_stamp] = pl["heartbeat"] if is_self
-      # Check if packet is new
-      new_packet = pl["heartbeat"] <= player.heartbeat - VMS::ADDED_DELAY
-      next if !VMS::HANDLE_MORE_PACKETS && new_packet
-      # Update player
-      player.update(pl)
-      player.is_new = new_packet
+        is_self = id == $player.id
+        if player.nil? # Player doesn't exist yet
+          # Create player
+          $game_temp.vms[:players][id] = VMS::Player.new(id, "", 0)
+          player = $game_temp.vms[:players][id]
+        end
+        # Update ping if this is the player
+        $game_temp.vms[:ping_stamp] = pl[hb_key] if is_self
+        # Check if packet is new
+        new_packet = pl[hb_key] <= player.heartbeat - VMS::ADDED_DELAY
+        next if !VMS::HANDLE_MORE_PACKETS && new_packet
+        # Update player
+        player.update(pl)
+        player.is_new = new_packet
       # Don't create event if player is self and SHOW_SELF is false
       next unless VMS::SHOW_SELF if is_self
       # Create event if necessary
@@ -241,35 +243,35 @@ module VMS
     end
     # Generate player data
     data = {}
-    data[:cluster_id]         = $game_temp.vms[:cluster] || -1        # What cluster to connect to
-    data[:id]                 = $player.id                            # Player ID
-    data[:heartbeat]          = Time.now                              # Used to calculate ping
-    data[:game_name]          = System.game_title                     # The name of the game
-    data[:game_version]       = Settings::GAME_VERSION                # The version of the game
-    data[:online_variables]   = $game_temp.vms[:online_variables]     # Online variables
-    data[:party]              = party
-    data[:name]               = $player.name
-    data[:trainer_type]       = $player.trainer_type
-    data[:map_id]             = $game_map.map_id
-    data[:x]                  = $game_player.x
-    data[:y]                  = $game_player.y
-    data[:real_x]             = $game_player.real_x
-    data[:real_y]             = $game_player.real_y
-    data[:direction]          = $game_player.direction
-    data[:pattern]            = $game_player.pattern
-    data[:graphic]            = $game_player.character_name
-    data[:offset_x]           = $game_player.x_offset
-    data[:offset_y]           = $game_player.y_offset
-    data[:opacity]            = $game_player.opacity
-    data[:stop_animation]     = $game_player.step_anime
-    data[:animation]          = $scene.spriteset.getAnimationSprites if $scene.is_a?(Scene_Map) && $scene.spriteset
-    data[:jump_offset]        = $game_player.screen_y_ground - $game_player.screen_y - $game_player.y_offset
-    data[:jumping_on_spot]    = $game_player.jumping_on_spot
-    data[:surfing]            = $PokemonGlobal.surfing
-    data[:diving]             = $PokemonGlobal.diving
-    data[:surf_base_coords]   = $game_temp.surf_base_coords || [nil, nil]
-    data[:state]              = $game_temp.vms[:state]
-    data[:busy]               = !VMS.interaction_possible?
+    data[VMS::PACKET_KEYS[:cluster_id]]       = $game_temp.vms[:cluster] || -1        # What cluster to connect to
+    data[VMS::PACKET_KEYS[:id]]               = $player.id                            # Player ID
+    data[VMS::PACKET_KEYS[:heartbeat]]        = Time.now                              # Used to calculate ping
+    data[VMS::PACKET_KEYS[:game_name]]        = System.game_title                     # The name of the game
+    data[VMS::PACKET_KEYS[:game_version]]     = Settings::GAME_VERSION                # The version of the game
+    data[VMS::PACKET_KEYS[:online_variables]] = $game_temp.vms[:online_variables]     # Online variables
+    data[VMS::PACKET_KEYS[:party]]            = party
+    data[VMS::PACKET_KEYS[:name]]             = $player.name
+    data[VMS::PACKET_KEYS[:trainer_type]]     = $player.trainer_type
+    data[VMS::PACKET_KEYS[:map_id]]           = $game_map.map_id
+    data[VMS::PACKET_KEYS[:x]]                = $game_player.x
+    data[VMS::PACKET_KEYS[:y]]                = $game_player.y
+    data[VMS::PACKET_KEYS[:real_x]]           = $game_player.real_x
+    data[VMS::PACKET_KEYS[:real_y]]           = $game_player.real_y
+    data[VMS::PACKET_KEYS[:direction]]        = $game_player.direction
+    data[VMS::PACKET_KEYS[:pattern]]          = $game_player.pattern
+    data[VMS::PACKET_KEYS[:graphic]]          = $game_player.character_name
+    data[VMS::PACKET_KEYS[:offset_x]]         = $game_player.x_offset
+    data[VMS::PACKET_KEYS[:offset_y]]         = $game_player.y_offset
+    data[VMS::PACKET_KEYS[:opacity]]          = $game_player.opacity
+    data[VMS::PACKET_KEYS[:stop_animation]]   = $game_player.step_anime
+    data[VMS::PACKET_KEYS[:animation]]        = $scene.spriteset.getAnimationSprites if $scene.is_a?(Scene_Map) && $scene.spriteset
+    data[VMS::PACKET_KEYS[:jump_offset]]      = $game_player.screen_y_ground - $game_player.screen_y - $game_player.y_offset
+    data[VMS::PACKET_KEYS[:jumping_on_spot]]  = $game_player.jumping_on_spot
+    data[VMS::PACKET_KEYS[:surfing]]          = $PokemonGlobal.surfing
+    data[VMS::PACKET_KEYS[:diving]]           = $PokemonGlobal.diving
+    data[VMS::PACKET_KEYS[:surf_base_coords]] = $game_temp.surf_base_coords || [nil, nil]
+    data[VMS::PACKET_KEYS[:state]]            = $game_temp.vms[:state]
+    data[VMS::PACKET_KEYS[:busy]]             = !VMS.interaction_possible?
     return data
   end
 end

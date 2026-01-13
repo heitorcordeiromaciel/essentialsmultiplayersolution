@@ -77,7 +77,7 @@ module VMS
       end
  
       # Compress once
-      binary = Zlib::Deflate.deflate(Marshal.dump(data), Zlib::BEST_SPEED)
+      binary = Zlib::Deflate.deflate(Marshal.dump(data), Zlib::BEST_COMPRESSION)
  
       # Broadcast binary to all players
       @players.each_value do |player|

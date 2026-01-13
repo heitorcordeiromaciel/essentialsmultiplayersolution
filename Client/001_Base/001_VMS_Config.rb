@@ -101,6 +101,17 @@ module VMS
   # ===========
   # Methods
   # ===========
+  # Mapping for integer-keyed serialization to reduce bandwidth
+  PACKET_KEYS = {
+    id: 1, heartbeat: 2, name: 3, map_id: 4, x: 5, y: 6, real_x: 7, real_y: 8,
+    trainer_type: 9, direction: 10, pattern: 11, graphic: 12, party: 13,
+    animation: 14, offset_x: 15, offset_y: 16, opacity: 17, stop_animation: 18,
+    rf_event: 19, jump_offset: 20, jumping_on_spot: 21, surfing: 22, diving: 23,
+    surf_base_coords: 24, state: 25, busy: 26, cluster_id: 27,
+    online_variables: 28, game_name: 29, game_version: 30
+  }
+  REVERSE_KEYS = PACKET_KEYS.invert
+
   # Usage: VMS.log("message", true) (logs a message to the console, with optional warning flag)
   def self.log(message="", warning=false)
     return unless LOG_TO_CONSOLE

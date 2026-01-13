@@ -7,6 +7,17 @@
 ##############################################################################
 
 module VMS
+  # Mapping for integer-keyed serialization to reduce bandwidth
+  PACKET_KEYS = {
+    id: 1, heartbeat: 2, name: 3, map_id: 4, x: 5, y: 6, real_x: 7, real_y: 8,
+    trainer_type: 9, direction: 10, pattern: 11, graphic: 12, party: 13,
+    animation: 14, offset_x: 15, offset_y: 16, opacity: 17, stop_animation: 18,
+    rf_event: 19, jump_offset: 20, jumping_on_spot: 21, surfing: 22, diving: 23,
+    surf_base_coords: 24, state: 25, busy: 26, cluster_id: 27,
+    online_variables: 28, game_name: 29, game_version: 30
+  }
+  REVERSE_KEYS = PACKET_KEYS.invert
+
   class Player
     # Necessary for connections
     attr_reader :id, :address, :port, :heartbeat, :socket
@@ -64,15 +75,17 @@ module VMS
 
     def update(data)
       # Packet sequencing: ignore older packets
-      if data.key?(:heartbeat)
-        incoming_hb = data[:heartbeat]
+      hb_key = PACKET_KEYS[:heartbeat]
+      if data.key?(hb_key)
+        incoming_hb = data[hb_key]
         return if incoming_hb < @heartbeat
         @heartbeat = incoming_hb
       end
 
-      data.each do |key, value|
-        next if key == :heartbeat
-        next if value.nil? && !@can_be_nil.include?(key.to_sym)
+      data.each do |key_idx, value|
+        key = REVERSE_KEYS[key_idx]
+        next if key == :heartbeat || key.nil?
+        next if value.nil? && !@can_be_nil.include?(key)
         
         # Check if value actually changed
         current_val = instance_variable_get("@#{key}")
@@ -84,15 +97,17 @@ module VMS
     end
 
     def to_hash(full = true)
-      hash = { "id" => @id, "heartbeat" => @heartbeat }
+      hash = { PACKET_KEYS[:id] => @id, PACKET_KEYS[:heartbeat] => @heartbeat }
       return hash unless full
 
       instance_variables.each do |var|
-        name = var.to_s.delete("@")
-        next if ["address", "port", "can_be_nil", "dirty", "id", "heartbeat", "socket"].include?(name)
+        sym = var.to_s.delete("@").to_sym
+        next unless PACKET_KEYS.key?(sym)
+        next if [:id, :heartbeat].include?(sym)
+        
         value = instance_variable_get(var)
         value = (value * 1000).round / 1000 if value.is_a?(Float)
-        hash[name] = value
+        hash[PACKET_KEYS[sym]] = value
       end
       return hash
     end

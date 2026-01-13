@@ -61,23 +61,28 @@ module VMS
     end
 
     def update(data)
-      data.each do |key, value|
+      data.each do |key_idx, value|
+        key = VMS::REVERSE_KEYS[key_idx]
+        next if key.nil?
         next if value.nil? && !@can_be_nil.include?(key)
-        if key == "heartbeat"
-          @heartbeat = Time.now
+        if key == :heartbeat
+          @heartbeat = value
           next
         end
-        instance_variable_set("@#{key}", value) if data.key?(key)
+        instance_variable_set("@#{key}", value)
       end
     end
 
     def to_hash
       hash = {}
       instance_variables.each do |var|
-        next if ["address", "port", "can_be_nil"].include?(var.to_s.delete("@"))
+        sym = var.to_s.delete("@").to_sym
+        next unless VMS::PACKET_KEYS.key?(sym)
+        next if [:address, :port, :can_be_nil].include?(sym)
+        
         value = instance_variable_get(var)
         value = (value * 1000).round / 1000 if value.is_a?(Float)
-        hash[var.to_s.delete("@")] = value
+        hash[VMS::PACKET_KEYS[sym]] = value
       end
       return hash
     end
