@@ -107,22 +107,22 @@ module VMS
       sanitized = {}
       # Define expected types for critical fields
       expected = {
-        "id" => Integer,
-        "cluster_id" => Integer,
-        "name" => String,
-        "map_id" => Integer,
-        "x" => Integer,
-        "y" => Integer,
-        "real_x" => Numeric,
-        "real_y" => Numeric,
-        "direction" => Integer,
-        "pattern" => Integer,
-        "graphic" => String,
-        "heartbeat" => Time
+        :id => Integer,
+        :cluster_id => Integer,
+        :name => String,
+        :map_id => Integer,
+        :x => Integer,
+        :y => Integer,
+        :real_x => Numeric,
+        :real_y => Numeric,
+        :direction => Integer,
+        :pattern => Integer,
+        :graphic => String,
+        :heartbeat => Time
       }
       
       data.each do |k, v|
-        key = k.to_s
+        key = k.to_sym rescue k.to_s.to_sym
         if expected.key?(key)
           # Only keep if type matches (or can be converted)
           if v.is_a?(expected[key])
@@ -158,40 +158,46 @@ module VMS
       player = Player.new(data[:id], address, port)
       player.socket = socket
       
-      if cluster_exists(data[:cluster_id])
-        if @clusters[data[:cluster_id]].player_count < Config.max_players
-          @clusters[data[:cluster_id]].add_player(player)
-          update(address, port, data, socket)
-          log("#{get_player_name(data)} connected to cluster #{data[:cluster_id]}.")
+      cluster_id = data[:cluster_id] || 0
+      if cluster_exists(cluster_id)
+        cluster = @clusters.values.find { |c| c.id == cluster_id }
+        if cluster.player_count < Config.max_players
+          cluster.add_player(player)
+          player.update(data)
+          log("#{get_player_name(data)} connected to cluster #{cluster_id}.")
         else
-          log("#{get_player_name(data)} tried to connect to cluster #{data[:cluster_id]}, but it was full.")
+          log("#{get_player_name(data)} tried to connect to cluster #{cluster_id}, but it was full.")
           send(:disconnect_full, address, port, socket)
         end
       else
-        @clusters[data[:cluster_id]] = Cluster.new(data[:cluster_id] || @clusters.length, self)
-        @clusters[data[:cluster_id]].add_player(player)
-        update(address, port, data, socket)
-        log("#{get_player_name(data)} connected to newly created cluster #{data[:cluster_id]}.")
+        cluster = Cluster.new(cluster_id, self)
+        @clusters[cluster_id] = cluster
+        cluster.add_player(player)
+        player.update(data)
+        log("#{get_player_name(data)} connected to newly created cluster #{cluster_id}.")
       end
     end
 
     def disconnect(address, port, data, socket = nil)
-      if cluster_exists(data[:cluster_id])
-        if @clusters[data[:cluster_id]].has_player(address, port)
-          @clusters[data[:cluster_id]].remove_player(data[:id])
-          log("#{get_player_name(data)} disconnected from cluster #{data[:cluster_id]}.")
+      cluster_id = data[:cluster_id]
+      if cluster_exists(cluster_id)
+        cluster = @clusters.values.find { |c| c.id == cluster_id }
+        if cluster.has_player(address, port)
+          cluster.remove_player(data[:id])
+          log("#{get_player_name(data)} disconnected from cluster #{cluster_id}.")
         else
-          log("#{get_player_name(data)} tried to disconnect from cluster #{data[:cluster_id]}, but they weren't connected.")
+          log("#{get_player_name(data)} tried to disconnect from cluster #{cluster_id}, but they weren't connected.")
         end
       else
-        log("#{get_player_name(data)} tried to disconnect from cluster #{data[:cluster_id]}, but it didn't exist.")
+        log("#{get_player_name(data)} tried to disconnect from cluster #{cluster_id}, but it didn't exist.")
       end
       send(:disconnect, address, port, socket)
     end
 
     def update(address, port, data, socket = nil)
-      if cluster_exists(data[:cluster_id])
-        cluster = @clusters[data[:cluster_id]]
+      cluster_id = data[:cluster_id]
+      if cluster_exists(cluster_id)
+        cluster = @clusters.values.find { |c| c.id == cluster_id }
         if cluster.has_player(address, port)
           if !data[:online_variables].nil?
             data[:online_variables].each do |key, value|
@@ -204,12 +210,10 @@ module VMS
           cluster.players[data[:id]].update(data)
           cluster.players[data[:id]].socket = socket if socket
         else
-          log("#{get_player_name(data)} tried to update cluster #{data[:cluster_id]}, but they weren't connected.", true)
-          connect(address, port, data, socket)
+          log("#{get_player_name(data)} tried to update cluster #{cluster_id}, but they weren't connected.", true)
         end
       else
-        log("#{get_player_name(data)} tried to update cluster #{data[:cluster_id]}, but it didn't exist.")
-        connect(address, port, data, socket)
+        log("#{get_player_name(data)} tried to update cluster #{cluster_id}, but it didn't exist.")
       end
     end
 

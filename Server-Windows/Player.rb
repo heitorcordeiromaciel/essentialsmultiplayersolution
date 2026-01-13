@@ -27,6 +27,7 @@ module VMS
       # Required for connections
       @id = id
       @address = address
+      @port = port
       @socket = nil
       @heartbeat = Time.now
       @dirty = true
@@ -63,14 +64,14 @@ module VMS
 
     def update(data)
       # Packet sequencing: ignore older packets
-      if data.key?("heartbeat")
-        incoming_hb = data["heartbeat"]
+      if data.key?(:heartbeat)
+        incoming_hb = data[:heartbeat]
         return if incoming_hb < @heartbeat
         @heartbeat = incoming_hb
       end
 
       data.each do |key, value|
-        next if key == "heartbeat"
+        next if key == :heartbeat
         next if value.nil? && !@can_be_nil.include?(key.to_sym)
         
         # Check if value actually changed
