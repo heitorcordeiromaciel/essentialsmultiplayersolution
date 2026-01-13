@@ -1,4 +1,4 @@
-# HeitorMaciel's Multiplayer Solution
+# Essential' Multiplayer Solution
 ### Fork of [Voltseon’s Multiplayer Solution](https://eeveeexpo.com/resources/1453/) for Pokémon Essentials v21.1
 
 Since the original plugin is no longer maintained, this fork aims to:
@@ -16,8 +16,8 @@ Since the original plugin is no longer maintained, this fork aims to:
 - [x] Terastal Support (DBK Terastallization)
 - [ ] Following Pokémon Support
 - [ ] Overworld Encounters Support
-- [ ] Additional Battle Formats
-- [ ] Server Security Improvements
+- [X] Additional Battle Formats
+- [X] Server Performance Improvements
 - [ ] General Bug Fixes
 
 > More features will be added as development continues.
