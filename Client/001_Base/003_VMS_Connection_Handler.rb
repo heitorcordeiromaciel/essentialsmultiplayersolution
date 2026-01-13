@@ -15,10 +15,10 @@ module VMS
     # Create socket
     begin
       if VMS::USE_TCP
-        socket = TCPSocket.new(VMS::HOST, VMS::PORT)
+        socket = TCPSocket.new(VMS.target_host, VMS::PORT)
       else
         socket = UDPSocket.new
-        socket.connect(VMS::HOST, VMS::PORT)
+        socket.connect(VMS.target_host, VMS::PORT)
       end
     rescue Errno::ECONNREFUSED, Errno::ECONNRESET
       VMS.log("Server is not active", true)

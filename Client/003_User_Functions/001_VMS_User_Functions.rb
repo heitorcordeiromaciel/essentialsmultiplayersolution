@@ -168,10 +168,10 @@ module VMS
     begin
       # Create temporary socket
       if VMS::USE_TCP
-        socket = TCPSocket.new(VMS::HOST, VMS::PORT)
+        socket = TCPSocket.new(VMS.target_host, VMS::PORT)
       else
         socket = UDPSocket.new
-        socket.connect(VMS::HOST, VMS::PORT)
+        socket.connect(VMS.target_host, VMS::PORT)
       end
       
       # Send list request

@@ -26,6 +26,13 @@ module VMS
 
   HOST = host
   PORT = port
+  
+  # The current target IP for connecting. Can be changed at runtime.
+  class << self
+    attr_accessor :target_host
+  end
+  @target_host = HOST
+
   # Whether or not to log messages to the console.
   LOG_TO_CONSOLE = true
   # Whether or not to show yourself from the server's perspective. This is useful for testing.

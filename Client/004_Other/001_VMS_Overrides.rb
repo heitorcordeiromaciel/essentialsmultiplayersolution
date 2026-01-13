@@ -363,7 +363,7 @@ MenuHandlers.add(:pause_menu, :vms, {
   "condition" => proc { VMS::ACCESSIBLE_PROC.call && VMS::ACCESSIBLE_FROM_PAUSE_MENU && !VMS.is_connected? },
   "effect"    => proc { |menu|
     menu.pbHideMenu
-    choices = ["Create cluster", "Browse clusters", "Cancel"]
+    choices = ["Create cluster", "Browse clusters", "Host Game", "Set Server IP", "Cancel"]
     choice = VMS.message(VMS::MENU_CHOICES_MESSAGE, choices)
     case choice
     when 0 # Create cluster
@@ -403,7 +403,20 @@ MenuHandlers.add(:pause_menu, :vms, {
           next false
         end
       end
-    when 2 # Cancel
+    when 2 # Host Game
+      VMS::IntegratedServer.start
+      VMS.target_host = "127.0.0.1"
+      VMS.join(rand(10000...99999))
+    when 3 # Set Server IP
+      params = [["Server IP", 0, 15, VMS.target_host]]
+      if pbEntryTextWindow(_INTL("Enter Server IPv4"), params)
+        VMS.target_host = params[0][3]
+        VMS.message(_INTL("Target IP set to: {1}", VMS.target_host))
+      end
+      menu.pbShowMenu
+      menu.pbRefresh
+      next false
+    when 4 # Cancel
       menu.pbShowMenu
       menu.pbRefresh
       next false
