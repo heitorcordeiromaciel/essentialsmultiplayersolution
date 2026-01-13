@@ -78,9 +78,10 @@ module VMS
         send_data = VMS.generate_player_data
         own_player = VMS.get_self
         update_data = own_player.nil? ? send_data : send_data.reject do |key, value|
-          key != :state && key != :cluster_id && key != :id && key != :heartbeat &&
-          ((!value.is_a?(Array) && own_player.instance_variable_get("@" + key.to_s) == value) ||
-          (value.is_a?(Array) && VMS.array_compare(own_player.instance_variable_get("@" + key.to_s), value)))
+          sym = VMS::REVERSE_KEYS[key]
+          sym != :state && sym != :cluster_id && sym != :id && sym != :heartbeat &&
+          ((!value.is_a?(Array) && own_player.instance_variable_get("@#{sym}") == value) ||
+          (value.is_a?(Array) && VMS.array_compare(own_player.instance_variable_get("@#{sym}"), value)))
         end
         VMS.send_message(["update", update_data])
       end

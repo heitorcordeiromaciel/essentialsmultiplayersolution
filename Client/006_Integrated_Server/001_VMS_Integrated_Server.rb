@@ -65,10 +65,10 @@ module VMS
               else
                 begin
                   if @use_tcp
-                    data = s.recv_nonblock(65536)
+                    data = s.respond_to?(:recv_nonblock) ? s.recv_nonblock(65536) : s.recv(65536)
                     handle_packet(data, s.addr[3], s.addr[1], s)
                   else
-                    data, address = @socket.recvfrom_nonblock(65536)
+                    data, address = @socket.respond_to?(:recvfrom_nonblock) ? @socket.recvfrom_nonblock(65536) : @socket.recvfrom(65536)
                     handle_packet(data, address[3], address[1])
                   end
                 rescue EOFError

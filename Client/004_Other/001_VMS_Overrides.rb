@@ -371,9 +371,9 @@ MenuHandlers.add(:pause_menu, :vms, {
       VMS.target_host = "127.0.0.1"
       VMS.join(0) # Hardlock to Cluster 0
     when 1 # Join Server
-      params = [["Server IP", 0, 15, VMS.target_host]]
-      if pbEntryTextWindow(_INTL("Enter Server IPv4"), params)
-        VMS.target_host = params[0][3]
+      ip = pbEnterBoxName(_INTL("Enter Server IPv4"), 0, 15, VMS.target_host)
+      if !ip.nil? && ip != ""
+        VMS.target_host = ip
         VMS.join(0) # Hardlock to Cluster 0
       else
         menu.pbShowMenu
@@ -381,9 +381,9 @@ MenuHandlers.add(:pause_menu, :vms, {
         next false
       end
     when 2 # Set Server IP
-      params = [["Server IP", 0, 15, VMS.target_host]]
-      if pbEntryTextWindow(_INTL("Enter Server IPv4"), params)
-        VMS.target_host = params[0][3]
+      ip = pbEnterBoxName(_INTL("Enter Server IPv4"), 0, 15, VMS.target_host)
+      if !ip.nil? && ip != ""
+        VMS.target_host = ip
         VMS.message(_INTL("Target IP set to: {1}", VMS.target_host))
       end
       menu.pbShowMenu

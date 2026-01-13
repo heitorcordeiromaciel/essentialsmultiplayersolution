@@ -84,13 +84,16 @@ module VMS
       VMS.sync_seed
     rescue StandardError => e
       VMS.log("An error occurred whilst battling: #{e.message}", true)
-      VMS.message(VMS::BASIC_ERROR_MESSAGE)
+      VMS.log(e.backtrace.join("\n"), true)
+      VMS.message(_INTL("An error has occurred: {1}", e.message))
       $player.party = old_party if old_party
       $game_temp.vms[:state] = [:idle, nil]
     end
   end
 end
 
+class Battle
+  attr_accessor :battleAI, :party1starts, :party2starts, :ally_items
   alias vms_initialize initialize unless method_defined?(:vms_initialize)
   def initialize(*args)
     vms_initialize(*args)

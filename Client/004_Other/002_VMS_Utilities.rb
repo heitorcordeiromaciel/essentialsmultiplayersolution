@@ -89,6 +89,6 @@ module VMS
 
   def self.array_compare(arr1, arr2)
     return false unless arr1.is_a?(Array) && arr2.is_a?(Array) && arr1.length == arr2.length
-    return arr1 & arr2 == arr1
+    return arr1 == arr2
   end
 end
