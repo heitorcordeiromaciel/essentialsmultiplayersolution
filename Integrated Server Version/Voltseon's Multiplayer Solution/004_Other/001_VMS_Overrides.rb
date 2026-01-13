@@ -371,6 +371,7 @@ MenuHandlers.add(:pause_menu, :vms, {
       VMS.target_host = "127.0.0.1"
       VMS.join(0)
     when 1 # Join Server
+      VMS.target_host = "127.0.0.1"
       ip = pbEnterBoxName(_INTL("Enter Server IPv4"), 0, 15, VMS.target_host)
       if !ip.nil? && ip != ""
         VMS.target_host = ip
@@ -381,6 +382,7 @@ MenuHandlers.add(:pause_menu, :vms, {
         next false
       end
     when 2 # Set Server IP
+      VMS.target_host = "127.0.0.1"
       ip = pbEnterBoxName(_INTL("Enter Server IPv4"), 0, 15, VMS.target_host)
       if !ip.nil? && ip != ""
         VMS.target_host = ip

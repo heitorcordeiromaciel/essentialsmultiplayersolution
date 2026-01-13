@@ -112,6 +112,17 @@ module VMS
   }
   REVERSE_KEYS = PACKET_KEYS.invert
 
+  # Usage: VMS.target_host (returns the target host IP)
+  def self.target_host
+    @target_host ||= VMS::HOST
+    return @target_host
+  end
+
+  # Usage: VMS.target_host=(host #<String>) (sets the target host IP)
+  def self.target_host=(host)
+    @target_host = host
+  end
+
   # Usage: VMS.log("message", true) (logs a message to the console, with optional warning flag)
   def self.log(message="", warning=false)
     return unless LOG_TO_CONSOLE

@@ -89,13 +89,14 @@ module VMS
       return if data.nil? || data.empty?
       begin
         data = Marshal.load(Zlib::Inflate.inflate(data))
-        return unless data.is_a?(Array) && data.length >= 2
+        return unless data.is_a?(Array)
+        return unless data.length >= 2 || (data.length >= 1 && data[0] == "list_clusters")
         
         case data[0]
         when "connect"      then connect(address, port, sanitize_data(data[1]), socket)
         when "disconnect"   then disconnect(address, port, sanitize_data(data[1]), socket)
         when "update"       then update(address, port, sanitize_data(data[1]), socket)
-        when "list_clusters" then list_clusters(address, port)
+        when "list_clusters" then list_clusters(address, port, socket)
         end
       rescue => e
         log("Packet error from #{address}:#{port} - #{e}", true)
@@ -273,7 +274,7 @@ module VMS
       @clusters.delete(id)
     end
 
-    def list_clusters(address, port)
+    def list_clusters(address, port, socket = nil)
       cluster_list = []
       @clusters.each_value do |cluster|
         cluster_list.push({
@@ -281,7 +282,7 @@ module VMS
           player_count: cluster.player_count
         })
       end
-      send([:cluster_list, cluster_list], address, port)
+      send([:cluster_list, cluster_list], address, port, socket)
       log("Sent cluster list to #{address}:#{port}")
     end
   end

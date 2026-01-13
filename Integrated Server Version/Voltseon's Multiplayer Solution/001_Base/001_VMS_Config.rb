@@ -5,12 +5,10 @@ module VMS
 
   # Default port for hosting, integrated server is always hosted on 0.0.0.0:PORT.
   PORT = 25565
-  
   # The current target IP for connecting. Can be changed at runtime.
   class << self
     attr_accessor :target_host
   end
-  @target_host = HOST
 
   # Whether or not to log messages to the console.
   LOG_TO_CONSOLE = true

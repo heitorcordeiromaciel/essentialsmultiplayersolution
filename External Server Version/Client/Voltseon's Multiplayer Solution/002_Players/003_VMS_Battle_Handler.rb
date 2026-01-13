@@ -29,7 +29,7 @@ module VMS
         pbFadeOutIn {
           scene = PokemonParty_Scene.new
           screen = PokemonPartyScreen.new(scene, $player.party)
-          new_party = screen.pbPokemonMultipleEntryScreenEx(ruleset, true)
+          new_party = screen.pbPokemonMultipleEntryScreenEx(ruleset)
         }
         if new_party
           local_indices = []
@@ -47,13 +47,6 @@ module VMS
         return
       end
       opponent_indices = player.state[2]
-
-      # Final sync to ensure both have opponent_indices before moving to :battle state
-      $game_temp.vms[:state] = [:battle_ready, player.id, local_indices]
-      if !VMS.await_player_state(player, :battle_ready, _INTL("Synchronizing with {1}...", player.name), true, true)
-        $game_temp.vms[:state] = [:idle, nil]
-        return
-      end
       
       # Filter parties
       full_opponent_party = VMS.update_party(player)
@@ -98,6 +91,8 @@ module VMS
   end
 end
 
+class Battle
+  attr_accessor :battleAI, :party1starts, :party2starts, :ally_items
   alias vms_initialize initialize unless method_defined?(:vms_initialize)
   def initialize(*args)
     vms_initialize(*args)

@@ -168,10 +168,10 @@ module VMS
     begin
       # Create temporary socket
       if VMS::USE_TCP
-        socket = TCPSocket.new(VMS::HOST, VMS::PORT)
+        socket = TCPSocket.new(VMS.target_host, VMS::PORT)
       else
         socket = UDPSocket.new
-        socket.connect(VMS::HOST, VMS::PORT)
+        socket.connect(VMS.target_host, VMS::PORT)
       end
       
       # Send list request
@@ -184,13 +184,26 @@ module VMS
       cluster_list = nil
       
       loop do
-        data = socket.read_nonblock(65536, exception: false)
-        
-        if data != :wait_readable && data != :wait_writable && !data.nil?
-          data = Marshal.load(Zlib::Inflate.inflate(data))
-          if data.is_a?(Array) && data[0] == :cluster_list
-            cluster_list = data[1]
-            break
+        # Use IO.select instead of read_nonblock/recv_nonblock for better compatibility
+        if IO.select([socket], nil, nil, 0.1)
+          if VMS::USE_TCP
+            data = socket.recv(65536)
+          else
+            data, _sender = socket.recvfrom(65536)
+          end
+          
+          if !data.nil? && !data.empty?
+            # Attempt to inflate and load
+            begin
+              payload = Zlib::Inflate.inflate(data)
+              data = Marshal.load(payload)
+              if data.is_a?(Array) && data[0] == :cluster_list
+                cluster_list = data[1]
+                break
+              end
+            rescue => e
+              # Ignore malformed packets (could be keep-alives or stray packets)
+            end
           end
         end
         
@@ -200,7 +213,7 @@ module VMS
           break
         end
         
-        sleep(0.01) # Small delay to prevent busy waiting
+        # No sleep needed with IO.select (it has a timeout)
       end
       
       socket.close

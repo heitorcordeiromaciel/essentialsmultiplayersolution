@@ -181,6 +181,11 @@ module VMS
       next unless VMS::SHOW_SELF if is_self
       # Create event if necessary
       if player.rf_event.nil? || player.rf_event[:event].erased?
+        # Clean up erased event if it exists but is marked erased
+        if !player.rf_event.nil? && player.rf_event[:event].erased?
+           Rf.delete_event(player.rf_event)
+        end
+        
         if $map_factory.areConnected?(player.map_id, $game_map.map_id) # Map connection check
           player.rf_event = VMS.create_event(player.map_id, id)
         end
@@ -216,10 +221,10 @@ module VMS
       next unless event.name && event.name&.include?("vms_player")
       id = (event.name.gsub("vms_player_","")).to_i
       player = VMS.get_player(id)
-      if player.nil? || !$map_factory.areConnected?(player.map_id, $game_map.map_id)
-        event.character_name = ""
-        event.through = true
-        event.erase
+      if player.nil? || !$map_factory.areConnected?(player.map_id, $game_map.map_id) || 
+         (player.rf_event && player.rf_event[:event] != event)
+        # Properly delete the event instead of just erasing it
+        Rf.delete_event({ event: event, map_id: event.map_id })
       end
     end
   end

@@ -385,7 +385,7 @@ MenuHandlers.add(:pause_menu, :vms, {
         # Build choice list with cluster info
         cluster_choices = []
         clusters.each do |cluster|
-          cluster_choices.push("Cluster #{cluster[:id]} (#{cluster[:player_count]}/#{VMS::Config.max_players rescue 4} players)")
+          cluster_choices.push("Cluster #{cluster[:id]} (#{cluster[:player_count]}/4 players)")
         end
         cluster_choices.push("Cancel")
         
