@@ -11,22 +11,12 @@ Since the original plugin is no longer maintained, this fork aims to:
 
 ## Feature Progress
 
-- [x] Z-Move Support (DBK Z-Power)
-- [x] Dynamax Support (DBK Dynamax)
-- [x] Terastal Support (DBK Terastallization)
-- [ ] Following Pokémon Support
-- [ ] Overworld Encounters Support
-- [ ] Additional Battle Formats
-- [ ] Server Security Improvements
-- [ ] General Bug Fixes
-
-> More features will be added as development continues.
-
+You can check out the feature progress in the [Public Trello Board](https://trello.com/b/nO3AjeQr/essentials-multiplayer-solution)
 ---
 ## Installation and Setup
 
-- [Integrated Server Version Installation Guide](<./Integrated Server Version/Installation.md>)
-- [External Server Version Installation Guide](<./External Server Version/Installation.md>)
+- [Integrated Server Version Installation Guide](./Integrated Server Version/Installation.md)
+- [External Server Version Installation Guide](./External Server Version/Installation.md)
 ## Credits
 
 All credit goes to **Voltseon** for the original plugin.  
