@@ -1,8 +1,0 @@
-Name       = HeitorMaciel's Multiplayer Solution
-Version    = 1.0
-Requires   = rainefallUtils
-Optional   = [DBK] Z-Power,1.1.1
-Optional   = [DBK] Dynamax,1.1.3
-Optional   = [DBK] Terastallization,1.1.5
-Essentials = 21.1, 21
-Credits    = Voltseon, Heitor Maciel

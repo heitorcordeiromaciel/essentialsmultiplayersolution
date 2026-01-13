@@ -1,0 +1,8 @@
+Name       = Voltseon's Multiplayer Solution
+Version    = 2.0.0
+Requires   = rainefallUtils
+Optional   = [DBK] Z-Power
+Optional   = [DBK] Dynamax
+Optional   = [DBK] Terastallization
+Essentials = 21.1
+Credits    = Voltseon, ThankfulHyena170
