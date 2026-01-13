@@ -79,7 +79,7 @@ module VMS
   # Whether or not VMS is accessible. (set to 'proc { next true }' to always be accessible) (only used if ACCESSIBLE_FROM_PAUSE_MENU is true)
   ACCESSIBLE_PROC = proc { next true }
   # The name of the VMS option in the pause menu. (only used if ACCESSIBLE_FROM_PAUSE_MENU is true)
-  MENU_NAME = "COOP"
+  MENU_NAME = "Link Play"
   # Whether or not to show the cluster ID in the pause menu.
   SHOW_CLUSTER_ID_IN_PAUSE_MENU = true
   

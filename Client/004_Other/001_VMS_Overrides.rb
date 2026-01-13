@@ -194,7 +194,7 @@ class Sprite_SurfBase
     surf_check = (@connection_player.nil? ? $PokemonGlobal.surfing : @connection_player&.surfing)
     dive_check = (@connection_player.nil? ? $PokemonGlobal.diving : @connection_player&.diving)
     surf_base_coords = (@connection_player.nil? ? $game_temp.surf_base_coords : @connection_player&.surf_base_coords)
-    surf_base_coords = nil if surf_base_coords = [nil, nil]
+    surf_base_coords = nil if surf_base_coords == [nil, nil]
     if !surf_check && !dive_check
       # Just-in-time disposal of sprite
       if @sprite
@@ -372,28 +372,46 @@ MenuHandlers.add(:pause_menu, :vms, {
   "condition" => proc { VMS::ACCESSIBLE_PROC.call && VMS::ACCESSIBLE_FROM_PAUSE_MENU && !VMS.is_connected? },
   "effect"    => proc { |menu|
     menu.pbHideMenu
-    choices = ["Create cluster", "Join cluster", "Cancel"]
+    choices = ["Create cluster", "Browse clusters", "Cancel"]
     choice = VMS.message(VMS::MENU_CHOICES_MESSAGE, choices)
     case choice
     when 0 # Create cluster
       VMS.join(rand(10000...99999))
-    when 1 # Join cluster
-      id = "0"
-      loop do
-        id = pbMessageFreeText(VMS::MENU_ENTER_CLUSTER_ID_MESSAGE, "", false, 5)
-        if id.length != 5 || id.to_i.to_s != id
-          VMS.message(VMS::MENU_INVALID_CLUSTER_MESSAGE)
+    when 1 # Browse clusters
+      # Get cluster list from server
+      clusters = VMS.get_cluster_list
+      
+      if clusters.empty?
+        # No clusters available
+        if pbConfirmMessage(VMS::NO_CLUSTERS_AVAILABLE_MESSAGE)
+          VMS.join(rand(10000...99999))
         else
-          break
+          menu.pbShowMenu
+          menu.pbRefresh
+          next false
         end
-        if id.nil? || id.empty?
+      else
+        # Build choice list with cluster info
+        cluster_choices = []
+        clusters.each do |cluster|
+          cluster_choices.push("Cluster #{cluster[:id]} (#{cluster[:player_count]}/#{VMS::Config.max_players rescue 4} players)")
+        end
+        cluster_choices.push("Cancel")
+        
+        # Show cluster selection
+        cluster_choice = VMS.message(VMS::SELECT_CLUSTER_MESSAGE, cluster_choices)
+        
+        if cluster_choice >= 0 && cluster_choice < clusters.length
+          # Join selected cluster
+          selected_cluster = clusters[cluster_choice]
+          VMS.join(selected_cluster[:id])
+        else
+          # Cancel
           menu.pbShowMenu
           menu.pbRefresh
           next false
         end
       end
-      VMS.join(id.to_i)
-      VMS.message(VMS::MENU_CLUSTER_NOT_FOUND_MESSAGE) if VMS.is_connected? && VMS.get_player_count == 1
     when 2 # Cancel
       menu.pbShowMenu
       menu.pbRefresh

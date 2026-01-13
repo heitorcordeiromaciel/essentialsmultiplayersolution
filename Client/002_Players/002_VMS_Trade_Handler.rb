@@ -18,7 +18,7 @@ module VMS
       end
       # Check if the other player has any tradable Pokémon.
       party = VMS.update_party(player)
-      if party.each { |pkmn| !pkmn.egg? && !pkmn.shadowPokemon? }.length == 0
+      if party.count { |pkmn| !pkmn.egg? && !pkmn.shadowPokemon? } == 0
         VMS.message(_INTL(VMS::OTHER_NO_TRADABLE_MESSAGE, player.name))
         $game_temp.vms[:state] = [:idle, nil]
         return
@@ -44,13 +44,13 @@ module VMS
       party = VMS.update_party(player)
       trade_pokemon_index = player.state[2]
       trade_pokemon_name = player.state[3]
-      trade_pokemon = party[trade_pokemon_index]
       # Check if the other player selected a Pokémon.
-      if trade_pokemon_index == -1
+      if trade_pokemon_index == -1 || trade_pokemon_index >= party.length
         VMS.message(_INTL(VMS::TRADE_CANCEL_MESSAGE, player.name))
         $game_temp.vms[:state] = [:idle, nil]
         return
       end
+      trade_pokemon = party[trade_pokemon_index]
       # Confirm trade
       choices = [_INTL("Confirm Trade"), _INTL("Check my Pokémon"), _INTL("Check {1}'s Pokémon", player.name), _INTL("Cancel")]
       loop do
@@ -94,8 +94,9 @@ module VMS
         VMS.message("\\se[]" + _INTL("Save failed.") + "\\wtnp[30]")
       end
     end
-  rescue
-    VMS.log("An error occurred whilst trading.", true)
+  rescue StandardError => e
+    VMS.log("An error occurred whilst trading: #{e.message}", true)
     VMS.message(VMS::BASIC_ERROR_MESSAGE)
+    $game_temp.vms[:state] = [:idle, nil]
   end
 end

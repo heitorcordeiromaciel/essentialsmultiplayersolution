@@ -90,15 +90,17 @@ module VMS
           $game_temp.vms[:state] = [:idle, nil]
         end
       when :battle
-        if pbConfirmMessage(_INTL(VMS::INTERACTION_BATTLE_MESSAGE, player_name))
-          $game_temp.vms[:state] = [:battle, player.id]
+        battle_type = player.state[2] == :double ? VMS::BATTLE_TYPE_DOUBLE : VMS::BATTLE_TYPE_SINGLE
+        battle_size = player.state[3]
+        if pbConfirmMessage(_INTL(VMS::INTERACTION_BATTLE_MESSAGE, player_name, "#{battle_type} (#{battle_size}v#{battle_size})"))
+          $game_temp.vms[:state] = [:battle, player.id, player.state[2], player.state[3]]
           if !VMS.await_player_state(player, :battle, _INTL(VMS::INTERACTION_WAIT_RESPONSE_MESSAGE, player_name))
             if player.state[1] != $player.id
               VMS.message(_INTL(VMS::INTERACTION_CANCEL_MESSAGE, player_name))
               return
             end
           end
-          VMS.start_battle(player)
+          VMS.start_battle(player, player.state[2], player.state[3])
         else
           $game_temp.vms[:state] = [:idle, nil]
         end
@@ -200,15 +202,34 @@ module VMS
           VMS.message(_INTL(VMS::INTERACTION_NO_BATTLE_MESSAGE, player_name))
           next
         end
+        # Select battle type
+        battle_type_choice = VMS.message(VMS::SELECT_BATTLE_TYPE_MESSAGE, [VMS::BATTLE_TYPE_SINGLE, VMS::BATTLE_TYPE_DOUBLE, _INTL("Cancel")])
+        case battle_type_choice
+        when 0 then type = :single
+        when 1 then type = :double
+        else next
+        end
+        # Select party size
+        size_choices = (type == :single) ? [VMS::PARTY_SIZE_3, VMS::PARTY_SIZE_6] : [VMS::PARTY_SIZE_4, VMS::PARTY_SIZE_6]
+        size_choice = VMS.message(VMS::SELECT_PARTY_SIZE_MESSAGE, size_choices + [_INTL("Cancel")])
+        if size_choice == size_choices.length
+          next
+        end
+        size = (type == :single) ? (size_choice == 0 ? 3 : 6) : (size_choice == 0 ? 4 : 6)
+        # Validate party size
+        if $player.able_pokemon_count < size || VMS.update_party(player).count { |pkmn| pkmn.able? } < size
+          VMS.message(VMS::NOT_ENOUGH_POKEMON_MESSAGE)
+          next
+        end
         # Set state to battle with player
-        $game_temp.vms[:state] = [:battle, id]
+        $game_temp.vms[:state] = [:battle, id, type, size]
         if !VMS.await_player_state(player, :battle, _INTL(VMS::INTERACTION_WAIT_RESPONSE_MESSAGE, player_name))
           if player.state[1] != $player.id
             VMS.message(_INTL(VMS::INTERACTION_CANCEL_MESSAGE, player_name))
             return
           end
         end
-        VMS.start_battle(player)
+        VMS.start_battle(player, type, size)
         break
       when 3 # Cancel
         # Set state to idle

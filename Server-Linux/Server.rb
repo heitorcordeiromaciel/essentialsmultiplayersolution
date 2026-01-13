@@ -87,6 +87,8 @@ module VMS
               disconnect(address, port, data[1])
             when "update"
               update(address, port, data[1])
+            when "list_clusters"
+              list_clusters(address, port)
             end
           end
         rescue Errno::ECONNREFUSED, Errno::ECONNRESET
@@ -196,6 +198,18 @@ module VMS
 
     def remove_cluster(id)
       @clusters.delete(id)
+    end
+
+    def list_clusters(address, port)
+      cluster_list = []
+      @clusters.each_value do |cluster|
+        cluster_list.push({
+          id: cluster.id,
+          player_count: cluster.player_count
+        })
+      end
+      send([:cluster_list, cluster_list], address, port)
+      log("Sent cluster list to #{address}:#{port}")
     end
   end
 

@@ -47,8 +47,21 @@ module VMS
   INTERACTION_WAIT_SWITCH_MESSAGE = _INTL("Waiting for {1} to start talking...")
   # Message displayed when the other player wants to trade during interaction. {1} is the name of the other player.
   INTERACTION_TRADE_MESSAGE = _INTL("{1} would like to trade with you. \\wt[10]Do you accept?")
-  # Message displayed when the other player wants to battle during interaction. {1} is the name of the other player.
-  INTERACTION_BATTLE_MESSAGE = _INTL("{1} would like to battle with you. \\wt[10]Do you accept?")
+  # Message displayed when the other player wants to battle during interaction. {1} is the name of the other player, {2} is the battle type.
+  INTERACTION_BATTLE_MESSAGE = _INTL("{1} would like to have a {2} with you. \\wt[10]Do you accept?", "{1}", "{2}")
+  # Message displayed when selecting a battle type.
+  SELECT_BATTLE_TYPE_MESSAGE = _INTL("Select a battle type:")
+  # Battle type names.
+  BATTLE_TYPE_SINGLE = _INTL("Single Battle")
+  BATTLE_TYPE_DOUBLE = _INTL("Double Battle")
+  # Message displayed when selecting a party size.
+  SELECT_PARTY_SIZE_MESSAGE = _INTL("Select the number of Pokémon to use:")
+  # Party size options.
+  PARTY_SIZE_3 = _INTL("3 Pokémon")
+  PARTY_SIZE_4 = _INTL("4 Pokémon")
+  PARTY_SIZE_6 = _INTL("6 Pokémon")
+  # Message displayed when a player doesn't have enough Pokémon for the selected size.
+  NOT_ENOUGH_POKEMON_MESSAGE = _INTL("One of the players doesn't have enough Pokémon for this battle size.")
 
   # ===========
   # Interaction (Errors)
@@ -105,4 +118,8 @@ module VMS
   MENU_INVALID_CLUSTER_MESSAGE = _INTL("Invalid cluster ID.")
   # Message displayed when a cluster is not found, and a new one is created instead.
   MENU_CLUSTER_NOT_FOUND_MESSAGE = _INTL("Cluster not found; creating a new cluster instead.")
+  # Message displayed when no clusters are available.
+  NO_CLUSTERS_AVAILABLE_MESSAGE = _INTL("No clusters are currently available. Create a new one?")
+  # Message displayed when selecting a cluster to join.
+  SELECT_CLUSTER_MESSAGE = _INTL("Select a cluster to join:")
 end

@@ -162,4 +162,55 @@ module VMS
     return false unless $scene.is_a?(Scene_Map)
     return true
   end
+
+  # Usage: VMS.get_cluster_list (requests and returns a list of available clusters from the server)
+  def self.get_cluster_list
+    begin
+      # Create temporary socket
+      if VMS::USE_TCP
+        socket = TCPSocket.new(VMS::HOST, VMS::PORT)
+      else
+        socket = UDPSocket.new
+        socket.connect(VMS::HOST, VMS::PORT)
+      end
+      
+      # Send list request
+      message = Zlib::Deflate.deflate(Marshal.dump(["list_clusters"]), Zlib::BEST_SPEED)
+      socket.send(message, 0)
+      
+      # Wait for response (with timeout)
+      timeout = 3.0 # 3 seconds timeout
+      start_time = Time.now
+      cluster_list = nil
+      
+      loop do
+        data = socket.read_nonblock(65536, exception: false)
+        
+        if data != :wait_readable && data != :wait_writable && !data.nil?
+          data = Marshal.load(Zlib::Inflate.inflate(data))
+          if data.is_a?(Array) && data[0] == :cluster_list
+            cluster_list = data[1]
+            break
+          end
+        end
+        
+        # Timeout check
+        if Time.now - start_time > timeout
+          VMS.log("Cluster list request timed out", true)
+          break
+        end
+        
+        sleep(0.01) # Small delay to prevent busy waiting
+      end
+      
+      socket.close
+      return cluster_list || []
+    rescue Errno::ECONNREFUSED, Errno::ECONNRESET
+      VMS.log("Server is not active", true)
+      return []
+    rescue => e
+      VMS.log("Failed to get cluster list: #{e.message}", true)
+      return []
+    end
+  end
 end
