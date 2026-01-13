@@ -1,41 +1,15 @@
-# HeitorMaciel's Multiplayer Solution
-### Fork of [Voltseon’s Multiplayer Solution](https://eeveeexpo.com/resources/1453/) for Pokémon Essentials v21.1
+# Installation and Setup (External Server Version)
 
-Since the original plugin is no longer maintained, this fork aims to:
-- Keep compatibility with current Essentials versions and plugins  
-- Fix bugs and security issues  
-- Implement modern gameplay features
-- Improve ease of use for self-hosted servers (no Ruby installation required)
+## 1. Downloading the plugin
 
----
+Download the latest version of the plugin from the **[Official EeveeExpo page](https://eeveeexpo.com/resources/1453/)**.
 
-## Feature Progress
-
-- [x] Z-Move Support (DBK Z-Power)
-- [x] Dynamax Support (DBK Dynamax)
-- [x] Terastal Support (DBK Terastallization)
-- [ ] Following Pokémon Support
-- [ ] Overworld Encounters Support
-- [ ] Additional Battle Formats
-- [ ] Server Security Improvements
-- [ ] General Bug Fixes
-
-> More features will be added as development continues.
-
----
-
-## Installation and Setup
-
-### 1. Downloading the plugin
-
-Download the latest version of the plugin from the **[Releases](../../releases)** page.
-
-### 2. Adding it to your project (client)
+## 2. Adding it to your project (client)
 
 Extract the downloaded `.zip` file and move the following into your game project:
 
 ```
-Client/ → [YourGame]/Plugins/
+Voltseon's Multiplayer Solution/ → [YourGame]/Plugins/
 multiplayer.ini → [YourGame]/
 ```
 
@@ -51,7 +25,7 @@ YourGame/
 └── multiplayer.ini
 ```
 
-#### 2.1 Client Connection configuration
+## 2.1 Client Connection configuration
 
 The game reads connection settings from the `multiplayer.ini` file located in your game’s root folder.  
 Edit it with any text editor to configure the connection
@@ -62,7 +36,7 @@ If this file is missing, the client defaults to `127.0.0.1:25565`.
 
 Pre-packaged server builds are included for both **Windows** and **Linux**, and include a standalone Ruby installation
 
-### Folder Structure
+## Folder Structure
 ```
 Server/
 ├── ruby/ # standalone ruby installation for the server to run on
@@ -74,7 +48,7 @@ Server/
 ├── start.bat # For Windows
 └── start.sh # For Linux
 ```
-### Configuration
+## Configuration
 The server reads settings from `config.ini`.  
 You can edit it with any text editor:
 
@@ -125,8 +99,6 @@ outdated version (depending on your sever hosting solution).
 
 ---
 
-## Credits
+## Usage
 
-All credit goes to **Voltseon** for the original plugin.  
-This fork is **not intended to replace** the official plugin, it only exists because the original is no longer being updated.  
-If an official update is released that adds these features, I strongly recommend using the official version instead.
+Open the game, open the Menu, select Link Play, either Create a Cluster or Browse and join existing Clusters.
