@@ -29,106 +29,153 @@ module VMS
 
     def run
       log("Server started on #{Config.host}:#{Config.port}.")
-      # Tick rate
-      current_time = Time.now
-      elapsed_time = 1.0
-      last_tick = current_time
+      
       tick_interval = Config.tick_rate > 0 ? 1.0 / Config.tick_rate.to_f : 0.0
+      last_tick = Time.now
+
       loop do
-        # Skip to next tick if needed
-        if Config.tick_rate > 0 && elapsed_time < tick_interval
-          current_time = Time.now
-          elapsed_time = current_time - last_tick
-          last_tick = current_time
+        # Calculate time to wait for next tick
+        wait_time = nil
+        if tick_interval > 0
+          now = Time.now
+          elapsed = now - last_tick
+          wait_time = [tick_interval - elapsed, 0].max
         end
-        # Update clusters
-        threads = []
-        if elapsed_time >= tick_interval
-          @clusters.each_value do |cluster|
-            if Config.threading
-              threads << Thread.new { cluster.update_players }
+
+        # IO Multiplexing: Wait for data or next tick
+        readable, = IO.select([@socket] + @clients.values, nil, nil, wait_time)
+
+        if readable
+          readable.each do |s|
+            if s == @socket && Config.use_tcp
+              # New TCP connection
+              begin
+                client = @socket.accept_nonblock
+                @clients[client.addr] = client
+                log("New client connected: #{client.addr}")
+              rescue IO::WaitReadable, IO::WaitWritable
+              end
             else
-              cluster.update_players
-            end
-          end
-        end
-        begin
-          # Receive data from clients
-          if Config.use_tcp
-            @clients.each_value do |client|
-              data = client.recv_nonblock(65536, exception: false)
-              next if data == :wait_readable || data == :wait_writable || data.nil?
-              data = Marshal.load(Zlib::Inflate.inflate(data))
-              # Handle data
-              case data[0]
-              when "connect"
-                connect(client.addr[3], client.addr[1], data[1])
-              when "disconnect"
-                disconnect(client.addr[3], client.addr[1], data[1])
-              when "update"
-                update(client.addr[3], client.addr[1], data[1])
+              # Existing client or UDP socket
+              begin
+                if Config.use_tcp
+                  data = s.recv_nonblock(65536)
+                  handle_packet(data, s.addr[3], s.addr[1], s)
+                else
+                  data, address = @socket.recvfrom_nonblock(65536)
+                  handle_packet(data, address[3], address[1])
+                end
+              rescue EOFError
+                log("Client disconnected: #{s.addr}")
+                @clients.delete(s.addr)
+                s.close
+              rescue IO::WaitReadable, IO::WaitWritable
+              rescue => e
+                log("Error receiving data: #{e}", true)
               end
             end
-            # Accept new clients
-            client = @socket.accept_nonblock(exception: false)
-            next if client == :wait_readable || client == :wait_writable || client.nil?
-            @clients[client.addr] = client
-          else
-            data, address, port = @socket.recvfrom_nonblock(65536, exception: false)
-            next if data == :wait_readable || data == :wait_writable || data.nil? || address.nil?
-            port = address[1]
-            address = address[3]
-            data = Marshal.load(Zlib::Inflate.inflate(data))
-            # Handle data
-            case data[0]
-            when "connect"
-              connect(address, port, data[1])
-            when "disconnect"
-              disconnect(address, port, data[1])
-            when "update"
-              update(address, port, data[1])
-            when "list_clusters"
-              list_clusters(address, port)
-            end
           end
-        rescue Errno::ECONNREFUSED, Errno::ECONNRESET
-        rescue => e
-          log("#{e}", true)
         end
-        threads.each(&:join) if Config.threading
+
+        # Tick processing
+        if tick_interval == 0 || (Time.now - last_tick) >= tick_interval
+          @clusters.each_value(&:update_players)
+          last_tick = Time.now
+        end
       end
     end
 
-    def connect(address, port, data)
+    def handle_packet(data, address, port, socket = nil)
+      return if data.nil? || data.empty?
+      begin
+        data = Marshal.load(Zlib::Inflate.inflate(data))
+        return unless data.is_a?(Array) && data.length >= 2
+        
+        case data[0]
+        when "connect"      then connect(address, port, sanitize_data(data[1]), socket)
+        when "disconnect"   then disconnect(address, port, sanitize_data(data[1]), socket)
+        when "update"       then update(address, port, sanitize_data(data[1]), socket)
+        when "list_clusters" then list_clusters(address, port)
+        end
+      rescue => e
+        log("Packet error from #{address}:#{port} - #{e}", true)
+      end
+    end
+
+    def sanitize_data(data)
+      return {} unless data.is_a?(Hash)
+      sanitized = {}
+      # Define expected types for critical fields
+      expected = {
+        "id" => Integer,
+        "cluster_id" => Integer,
+        "name" => String,
+        "map_id" => Integer,
+        "x" => Integer,
+        "y" => Integer,
+        "real_x" => Numeric,
+        "real_y" => Numeric,
+        "direction" => Integer,
+        "pattern" => Integer,
+        "graphic" => String,
+        "heartbeat" => Time
+      }
+      
+      data.each do |k, v|
+        key = k.to_s
+        if expected.key?(key)
+          # Only keep if type matches (or can be converted)
+          if v.is_a?(expected[key])
+            sanitized[key] = v
+          elsif expected[key] == Integer && v.respond_to?(:to_i)
+            sanitized[key] = v.to_i
+          elsif expected[key] == Numeric && v.respond_to?(:to_f)
+            sanitized[key] = v.to_f
+          elsif expected[key] == String
+            sanitized[key] = v.to_s
+          end
+        else
+          # Pass through other fields (like party, state) but ensure they aren't nil unless allowed
+          sanitized[key] = v
+        end
+      end
+      sanitized
+    end
+
+    def connect(address, port, data, socket = nil)
       if Config.check_game_and_version
         if data[:game_name] != Config.game_name && data[:game_name] != "" && !data[:game_name].nil?
           log("#{get_player_name(data)} tried to connect to cluster #{data[:cluster_id]}, but they were using the wrong game (#{data[:game_name]}).")
-          send(:disconnect_wrong_game, address, port)
+          send(:disconnect_wrong_game, address, port, socket)
           return
         elsif data[:game_version] != Config.game_version && data[:game_version] != "" && !data[:game_version].nil?
           log("#{get_player_name(data)} tried to connect to cluster #{data[:cluster_id]}, but they were using the wrong version (#{data[:game_version]}).")
-          send(:disconnect_wrong_version, address, port)
+          send(:disconnect_wrong_version, address, port, socket)
           return
         end
       end
+      
+      player = Player.new(data[:id], address, port)
+      player.socket = socket
+      
       if cluster_exists(data[:cluster_id])
         if @clusters[data[:cluster_id]].player_count < Config.max_players
-          @clusters[data[:cluster_id]].add_player(Player.new(data[:id], address, port))
-          update(address, port, data)
+          @clusters[data[:cluster_id]].add_player(player)
+          update(address, port, data, socket)
           log("#{get_player_name(data)} connected to cluster #{data[:cluster_id]}.")
         else
           log("#{get_player_name(data)} tried to connect to cluster #{data[:cluster_id]}, but it was full.")
-          send(:disconnect_full, address, port)
+          send(:disconnect_full, address, port, socket)
         end
       else
         @clusters[data[:cluster_id]] = Cluster.new(data[:cluster_id] || @clusters.length, self)
-        @clusters[data[:cluster_id]].add_player(Player.new(data[:id], address, port))
-        update(address, port, data)
+        @clusters[data[:cluster_id]].add_player(player)
+        update(address, port, data, socket)
         log("#{get_player_name(data)} connected to newly created cluster #{data[:cluster_id]}.")
       end
     end
 
-    def disconnect(address, port, data)
+    def disconnect(address, port, data, socket = nil)
       if cluster_exists(data[:cluster_id])
         if @clusters[data[:cluster_id]].has_player(address, port)
           @clusters[data[:cluster_id]].remove_player(data[:id])
@@ -139,10 +186,10 @@ module VMS
       else
         log("#{get_player_name(data)} tried to disconnect from cluster #{data[:cluster_id]}, but it didn't exist.")
       end
-      send(:disconnect, address, port)
+      send(:disconnect, address, port, socket)
     end
 
-    def update(address, port, data)
+    def update(address, port, data, socket = nil)
       if cluster_exists(data[:cluster_id])
         cluster = @clusters[data[:cluster_id]]
         if cluster.has_player(address, port)
@@ -151,31 +198,45 @@ module VMS
               next if cluster.online_variables[key] == value
               log("#{get_player_name(data)} updated online variable #{key} to #{value}.")
               cluster.online_variables[key] = value
+              cluster.variables_dirty = true
             end
           end
           cluster.players[data[:id]].update(data)
+          cluster.players[data[:id]].socket = socket if socket
         else
           log("#{get_player_name(data)} tried to update cluster #{data[:cluster_id]}, but they weren't connected.", true)
-          connect(address, port, data)
+          connect(address, port, data, socket)
         end
       else
         log("#{get_player_name(data)} tried to update cluster #{data[:cluster_id]}, but it didn't exist.")
-        connect(address, port, data)
+        connect(address, port, data, socket)
       end
     end
 
-    def send(data, address, port)
+    def send(data, address, port, socket = nil)
+      binary = Zlib::Deflate.deflate(Marshal.dump(data), Zlib::BEST_SPEED)
+      send_binary(binary, address, port, socket)
+    end
+
+    def send_binary(binary, address, port, socket = nil)
       if Config.use_tcp
-        @clients.each_value do |client|
+        target = socket || @clients.values.find { |c| c.addr[3] == address && c.addr[1] == port }
+        if target
           begin
-            client.send(Zlib::Deflate.deflate(Marshal.dump(data), Zlib::BEST_SPEED), 0)
-          rescue
-            log("Client #{client.addr} disconnected.")
-            @clients.delete(client.addr)
+            target.send(binary, 0)
+          rescue => e
+            log("TCP Send Error to #{address}:#{port} - #{e}")
+            @clients.delete(target.addr)
+            # Force disconnect in all clusters to prevent zombies
+            @clusters.each_value { |c| c.remove_player_by_address(address, port) }
           end
         end
       else
-        @socket.send(Zlib::Deflate.deflate(Marshal.dump(data), Zlib::BEST_SPEED), 0, address, port)
+        begin
+          @socket.send(binary, 0, address, port)
+        rescue => e
+          log("UDP Send Error to #{address}:#{port} - #{e}")
+        end
       end
     end
 

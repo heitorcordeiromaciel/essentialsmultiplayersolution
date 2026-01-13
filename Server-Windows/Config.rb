@@ -1,59 +1,73 @@
 module VMS
   class Config
     CONFIG_PATH = File.join(__dir__, "config.ini")
+    @cache = {}
+
+    def self.load
+      return unless @cache.empty?
+      File.open(CONFIG_PATH, "r") do |file|
+        file.each_line do |l|
+          next if l.start_with?("#") || l.strip.empty?
+          parts = l.split(" = ")
+          next if parts.length < 2
+          @cache[parts[0].strip] = parts[1].strip
+        end
+      end
+    end
 
     def self.host
-      get_line("host").chomp
+      load
+      @cache["host"]
     end
 
     def self.port
-      get_line("port").chomp.to_i
+      load
+      @cache["port"].to_i
     end
 
     def self.check_game_and_version
-      get_line("check_game_and_version").chomp == "true"
+      load
+      @cache["check_game_and_version"] == "true"
     end
 
     def self.game_name
-      get_line("game_name").chomp
+      load
+      @cache["game_name"]
     end
 
     def self.game_version
-      get_line("game_version").chomp
+      load
+      @cache["game_version"]
     end
 
     def self.max_players
-      get_line("max_players").chomp.to_i
+      load
+      @cache["max_players"].to_i
     end
 
     def self.log
-      get_line("log").chomp == "true"
+      load
+      @cache["log"] == "true"
     end
 
     def self.heartbeat_timeout
-      get_line("heartbeat_timeout").chomp.to_i
+      load
+      @cache["heartbeat_timeout"].to_i
     end
 
     def self.use_tcp
-      get_line("use_tcp").chomp == "true"
+      load
+      @cache["use_tcp"] == "true"
     end
 
     def self.threading
-      get_line("threading").chomp == "true"
+      load
+      @cache["threading"] == "true"
     end
 
     def self.tick_rate
-      get_line("tick_rate").chomp.to_i
-    end
-    
-    def self.get_line(line)
-      File.open(CONFIG_PATH, "r") do |file|
-        file.each_line do |l|
-          if l.split(" = ")[0] == line
-            return l.split(" = ")[1]
-          end
-        end
-      end
+      load
+      @cache["tick_rate"].to_i
     end
   end
 end

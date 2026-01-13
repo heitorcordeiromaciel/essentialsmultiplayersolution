@@ -9,7 +9,7 @@
 module VMS
   class Player
     # Necessary for connections
-    attr_reader :id, :address, :port, :heartbeat
+    attr_reader :id, :address, :port, :heartbeat, :socket
     # Necessary for game
     attr_accessor :name, :map_id, :x, :y, :real_x, :real_y, :trainer_type, :direction, :pattern, :graphic
     # Additional information
@@ -19,7 +19,7 @@ module VMS
     # Other data
     attr_accessor :surfing, :diving, :surf_base_coords
     # Custom information
-    attr_accessor :state, :busy
+    attr_accessor :state, :busy, :dirty, :socket
 
     def initialize(id, address, port)
       # Used to check what values can be nil
@@ -28,7 +28,9 @@ module VMS
       @id = id
       @address = address
       @port = port
+      @socket = nil
       @heartbeat = Time.now
+      @dirty = true
       # Necessary for game
       @name = ""
       @map_id = 0
@@ -61,23 +63,36 @@ module VMS
     end
 
     def update(data)
+      # Packet sequencing: ignore older packets
+      if data.key?(:heartbeat)
+        incoming_hb = data[:heartbeat]
+        return if incoming_hb < @heartbeat
+        @heartbeat = incoming_hb
+      end
+
       data.each do |key, value|
-        next if value.nil? && !@can_be_nil.include?(key)
-        if key == "heartbeat"
-          @heartbeat = Time.now
-          next
+        next if key == :heartbeat
+        next if value.nil? && !@can_be_nil.include?(key.to_sym)
+        
+        # Check if value actually changed
+        current_val = instance_variable_get("@#{key}")
+        if current_val != value
+          instance_variable_set("@#{key}", value)
+          @dirty = true
         end
-        instance_variable_set("@#{key}", value) if data.key?(key)
       end
     end
 
-    def to_hash
-      hash = {}
+    def to_hash(full = true)
+      hash = { "id" => @id, "heartbeat" => @heartbeat }
+      return hash unless full
+
       instance_variables.each do |var|
-        next if ["address", "port", "can_be_nil"].include?(var.to_s.delete("@"))
+        name = var.to_s.delete("@")
+        next if ["address", "port", "can_be_nil", "dirty", "id", "heartbeat", "socket"].include?(name)
         value = instance_variable_get(var)
         value = (value * 1000).round / 1000 if value.is_a?(Float)
-        hash[var.to_s.delete("@")] = value
+        hash[name] = value
       end
       return hash
     end
