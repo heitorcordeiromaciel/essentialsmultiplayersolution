@@ -3,6 +3,7 @@
 ---
 
 ### Fork of [Voltseon’s Multiplayer Solution](https://eeveeexpo.com/resources/1453/) for Pokémon Essentials v21.1
+### This fork has been merged with the original plugin, future updates can be downloaded through the official plugin page
 
 Since the original plugin is no longer maintained, this fork aims to:
 - Keep compatibility with current Essentials versions and plugins  
