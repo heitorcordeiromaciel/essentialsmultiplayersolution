@@ -19,10 +19,10 @@ module VMS
       $game_temp.vms[:battle_type] = type
       
       # Party Selection Phase
-      local_indices = (0...$player.party.length).to_a
+      serialized_party = nil
+      new_party = nil
       # Always show selection screen for ordering, unless party is empty (which shouldn't happen)
       if $player.party.length > 0
-        new_party = nil
         ruleset = PokemonRuleSet.new
         ruleset.setNumber(size)
         ruleset.addPokemonRule(AblePokemonRestriction.new)
@@ -32,8 +32,7 @@ module VMS
           new_party = screen.pbPokemonMultipleEntryScreenEx(ruleset)
         }
         if new_party
-          local_indices = []
-          new_party.each { |pkmn| local_indices.push($player.party.index(pkmn)) }
+          serialized_party = VMS.encrypt(new_party)
         else
           $game_temp.vms[:state] = [:idle, nil]
           return
@@ -41,33 +40,23 @@ module VMS
       end
       
       # Sync selection
-      $game_temp.vms[:state] = [:battle_selection, player.id, local_indices]
+      $game_temp.vms[:state] = [:battle_selection, player.id, serialized_party]
       if !VMS.await_player_state(player, :battle_selection, _INTL("Waiting for {1} to select Pokémon...", player.name), true, true)
         $game_temp.vms[:state] = [:idle, nil]
         return
       end
-      opponent_indices = player.state[2]
+      opponent_party_data = player.state[2]
       
       # Filter parties
-      full_opponent_party = VMS.update_party(player)
       filtered_opponent_party = []
-      if opponent_indices.is_a?(Array)
-        opponent_indices.each do |i|
-          pkmn = full_opponent_party[i]
-          filtered_opponent_party.push(pkmn) if pkmn
-        end
+      if opponent_party_data
+        filtered_opponent_party = VMS.decrypt(opponent_party_data)
       end
       
       old_party = $player.party.dup
-      filtered_local_party = []
-      local_indices.each do |i|
-        pkmn = $player.party[i]
-        filtered_local_party.push(pkmn) if pkmn
-      end
-      $player.party = filtered_local_party
+      $player.party = new_party if new_party
       
       trainer = NPCTrainer.new(player.name, player.trainer_type, 0)
-      # trainer.id = player.id # Removed to prevent trainer type ID conflicts
       trainer.party = filtered_opponent_party
       
       # Re-seed right before battle starts to prevent UI-induced drift
