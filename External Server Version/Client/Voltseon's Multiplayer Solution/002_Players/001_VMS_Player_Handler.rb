@@ -211,16 +211,28 @@ module VMS
         else next
         end
         # Select party size
-        size_choices = (type == :single) ? [VMS::PARTY_SIZE_3, VMS::PARTY_SIZE_6] : [VMS::PARTY_SIZE_4, VMS::PARTY_SIZE_6]
+        size_choices = (type == :single) ? [VMS::PARTY_SIZE_3, VMS::PARTY_SIZE_6, _INTL("No Limit")] : [VMS::PARTY_SIZE_4, VMS::PARTY_SIZE_6, _INTL("No Limit")]
         size_choice = VMS.message(VMS::SELECT_PARTY_SIZE_MESSAGE, size_choices + [_INTL("Cancel")])
         if size_choice == size_choices.length
           next
         end
-        size = (type == :single) ? (size_choice == 0 ? 3 : 6) : (size_choice == 0 ? 4 : 6)
+        if size_choice == 2 # No Limit
+          size = nil
+        else
+          size = (type == :single) ? (size_choice == 0 ? 3 : 6) : (size_choice == 0 ? 4 : 6)
+        end
         # Validate party size
-        if $player.able_pokemon_count < size || VMS.update_party(player).count { |pkmn| pkmn.able? } < size
-          VMS.message(VMS::NOT_ENOUGH_POKEMON_MESSAGE)
-          next
+        if size
+          if $player.able_pokemon_count < size || VMS.update_party(player).count { |pkmn| pkmn.able? } < size
+            VMS.message(VMS::NOT_ENOUGH_POKEMON_MESSAGE)
+            next
+          end
+        else
+          # For No Limit, just check if they have at least 1 able pokemon
+          if $player.able_pokemon_count < 1 || VMS.update_party(player).count { |pkmn| pkmn.able? } < 1
+            VMS.message(VMS::NOT_ENOUGH_POKEMON_MESSAGE)
+            next
+          end
         end
         # Set state to battle with player
         battle_seed = rand(1000000...9999999)

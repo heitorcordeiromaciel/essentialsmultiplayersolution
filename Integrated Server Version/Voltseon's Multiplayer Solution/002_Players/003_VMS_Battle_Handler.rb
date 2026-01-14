@@ -24,7 +24,11 @@ module VMS
       # Always show selection screen for ordering, unless party is empty (which shouldn't happen)
       if $player.party.length > 0
         ruleset = PokemonRuleSet.new
-        ruleset.setNumber(size)
+        if size.nil?
+          ruleset.setNumberRange(1, 6)
+        else
+          ruleset.setNumber(size)
+        end
         ruleset.addPokemonRule(AblePokemonRestriction.new)
         pbFadeOutIn {
           scene = PokemonParty_Scene.new
@@ -312,6 +316,8 @@ class TrainerBattle
     battle.internalBattle = false
     # Set various other properties in the battle class
     setBattleRule("canLose")
+    setBattleRule("noExp")
+    setBattleRule("noMoney")
     if $game_temp.vms[:battle_type] == :double
       setBattleRule("double")
     else
