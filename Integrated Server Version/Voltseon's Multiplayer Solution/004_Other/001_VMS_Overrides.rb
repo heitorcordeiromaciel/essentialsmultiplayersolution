@@ -363,7 +363,7 @@ MenuHandlers.add(:pause_menu, :vms, {
   "condition" => proc { VMS::ACCESSIBLE_PROC.call && VMS::ACCESSIBLE_FROM_PAUSE_MENU && !VMS.is_connected? },
   "effect"    => proc { |menu|
     menu.pbHideMenu
-    choices = ["Host Game", "Join Server", "Set Server IP", "Cancel"]
+    choices = ["Host Game", "Join Server", "Cancel"]
     choice = VMS.message(VMS::MENU_CHOICES_MESSAGE, choices)
     case choice
     when 0 # Host Game
@@ -381,17 +381,7 @@ MenuHandlers.add(:pause_menu, :vms, {
         menu.pbRefresh
         next false
       end
-    when 2 # Set Server IP
-      VMS.target_host = "127.0.0.1"
-      ip = pbEnterBoxName(_INTL("Enter Server IPv4"), 0, 15, VMS.target_host)
-      if !ip.nil? && ip != ""
-        VMS.target_host = ip
-        VMS.message(_INTL("Target IP set to: {1}", VMS.target_host))
-      end
-      menu.pbShowMenu
-      menu.pbRefresh
-      next false
-    when 3 # Cancel
+    when 2 # Cancel
       menu.pbShowMenu
       menu.pbRefresh
       next false
