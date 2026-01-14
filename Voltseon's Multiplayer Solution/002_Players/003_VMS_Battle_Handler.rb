@@ -36,7 +36,9 @@ module VMS
           new_party = screen.pbPokemonMultipleEntryScreenEx(ruleset)
         }
         if new_party
+          VMS.log("Selected party size: #{new_party.length}")
           serialized_party = VMS.encrypt(new_party)
+          VMS.log("Serialized party: #{serialized_party.nil? ? 'nil' : 'valid'}")
         else
           $game_temp.vms[:state] = [:idle, nil]
           return
@@ -50,16 +52,26 @@ module VMS
         return
       end
       opponent_party_data = player.state[2]
-      
+      VMS.log("Received opponent party data: #{opponent_party_data.nil? ? 'nil' : 'valid'}")
+
       # Filter parties
       filtered_opponent_party = []
       if opponent_party_data
         filtered_opponent_party = VMS.decrypt(opponent_party_data)
+        VMS.log("Decrypted opponent party size: #{filtered_opponent_party.nil? ? 'nil' : filtered_opponent_party.length}")
       end
-      
+
+      # Validate opponent party
+      if filtered_opponent_party.nil? || filtered_opponent_party.empty?
+        VMS.log("Opponent party is empty or invalid", true)
+        VMS.message(_INTL("Unable to start battle - opponent has no valid Pokémon."))
+        $game_temp.vms[:state] = [:idle, nil]
+        return
+      end
+
       old_party = $player.party.dup
       $player.party = new_party if new_party
-      
+
       trainer = NPCTrainer.new(player.name, player.trainer_type, 0)
       trainer.party = filtered_opponent_party
       

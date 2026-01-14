@@ -78,15 +78,28 @@ module VMS
           return
         end
       end
-      # Wait for the other player to select a Pokémon.
+      # Wait for the other player to accept
       if !VMS.await_player_state(player, :trade_accept, _INTL(VMS::TRADE_WAIT_ACCEPT_MESSAGE, player_name), true, true)
         VMS.message(_INTL(VMS::TRADE_CANCEL_MESSAGE, player.name))
         $game_temp.vms[:state] = [:idle, nil]
         return
       end
-      # Commence trade
-      $game_temp.vms[:state] = [:idle, nil]
+
+      # Both players are in trade_accept state, now move to trading state
+      $game_temp.vms[:state] = [:trading, player.id]
+
+      # Wait for other player to also be in trading state (ensures sync)
+      if !VMS.await_player_state(player, :trading, _INTL("Completing trade..."), true, true)
+        VMS.message(_INTL(VMS::TRADE_CANCEL_MESSAGE, player.name))
+        $game_temp.vms[:state] = [:idle, nil]
+        return
+      end
+
+      # Both players are ready, commence trade
       pbStartTrade(pokemon_index, trade_pokemon, trade_pokemon_name, player.name)
+
+      # Set state to idle AFTER trade completes
+      $game_temp.vms[:state] = [:idle, nil]
       # Save the game to prevent duplicate Pokémon.
       if Game.save
         VMS.message("\\se[]" + _INTL("{1} saved the game.", $player.name) + "\\me[GUI save game]\\wtnp[30]")
