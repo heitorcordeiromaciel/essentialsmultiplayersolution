@@ -1,4 +1,5 @@
 create_cluster.rb
 test_client.rb
-External Server Version/Server-Linux/ruby/
-External Server Version/Server-Windows/ruby/
+/External Server Version/Server-Linux/ruby/
+/External Server Version/Server-Windows/ruby/
+**/ruby/
