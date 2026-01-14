@@ -12,13 +12,16 @@ module VMS
       VMS.log("Already connected to a server")
       return
     end
+    # Determine connection parameters based on server type
+    host = VMS::USE_EXTERNAL_SERVER ? VMS::EXTERNALHOST : VMS.target_host
+    port = VMS::USE_EXTERNAL_SERVER ? VMS::EXTERNALPORT : VMS::PORT
     # Create socket
     begin
       if VMS::USE_TCP
-        socket = TCPSocket.new(VMS.target_host, VMS::PORT)
+        socket = TCPSocket.new(host, port)
       else
         socket = UDPSocket.new
-        socket.connect(VMS.target_host, VMS::PORT)
+        socket.connect(host, port)
       end
     rescue Errno::ECONNREFUSED, Errno::ECONNRESET
       VMS.log("Server is not active", true)
@@ -38,7 +41,8 @@ module VMS
 
   # Usage: VMS.leave (disconnects from the server)
   def self.leave(show_message = true)
-    VMS::IntegratedServer.stop if defined?(VMS::IntegratedServer)
+    # Only stop integrated server if not using external server
+    VMS::IntegratedServer.stop if !VMS::USE_EXTERNAL_SERVER && defined?(VMS::IntegratedServer)
     if $game_temp.vms[:socket].nil? # Not connected
       VMS.log("Not connected to a server") if show_message
       return

@@ -2,30 +2,21 @@ module VMS
   # ===========
   # Debug 
   # ===========
-  DEFAULT_HOST = "127.0.0.1"
-  DEFAULT_PORT = 25565
 
-  exe_dir = File.expand_path(File.dirname($0))
-  config_path = File.join(exe_dir, "multiplayer.ini")
-  host = DEFAULT_HOST
-  port = DEFAULT_PORT
+  # If external server is configured, if false, external server option will not show up on the menu
 
-  if File.exist?(config_path)
-    File.readlines(config_path).each do |line|
-      line.strip!
-      next if line.empty? || line.start_with?("#")
-      key, value = line.split("=", 2)
-      case key.downcase
-      when "host"
-        host = value
-      when "port"
-        port = value.to_i
-      end
-    end
+  USE_EXTERNAL_SERVER = false
+  EXTERNALHOST = "127.0.0.1"
+  EXTERNALPORT = 12345
+
+  # Default port for hosting, integrated server is always hosted on 0.0.0.0:PORT.
+  PORT = 25565
+
+  # The current target IP for connecting. Can be changed at runtime.
+  class << self
+    attr_accessor :target_host
   end
 
-  HOST = host
-  PORT = port
   # Whether or not to log messages to the console.
   LOG_TO_CONSOLE = true
   # Whether or not to show yourself from the server's perspective. This is useful for testing.
@@ -36,6 +27,8 @@ module VMS
   # ===========
   # Whether or not to use TCP instead of UDP. TCP is more reliable, but UDP is faster.
   USE_TCP = false
+  # The maximum number of players allowed in the integrated server.
+  MAX_PLAYERS = 4
   
   # ===========
   # Connection
@@ -49,6 +42,7 @@ module VMS
   # The timeout in seconds. If the server does not respond within this time, the client will disconnect.
   TIMEOUT_SECONDS = 30
   # Whether or not to sync the seed with the server. This means that all players will have the same random numbers.
+  HEARTBEAT_TIMEOUT = 30
   SEED_SYNC = false
   
   # ===========
@@ -111,17 +105,6 @@ module VMS
     online_variables: 28, game_name: 29, game_version: 30
   }
   REVERSE_KEYS = PACKET_KEYS.invert
-
-  # Usage: VMS.target_host (returns the target host IP)
-  def self.target_host
-    @target_host ||= VMS::HOST
-    return @target_host
-  end
-
-  # Usage: VMS.target_host=(host #<String>) (sets the target host IP)
-  def self.target_host=(host)
-    @target_host = host
-  end
 
   # Usage: VMS.log("message", true) (logs a message to the console, with optional warning flag)
   def self.log(message="", warning=false)
