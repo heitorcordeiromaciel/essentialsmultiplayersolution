@@ -236,7 +236,8 @@ module VMS
         target = socket || @clients.values.find { |c| c.addr[3] == address && c.addr[1] == port }
         if target
           begin
-            target.send(binary, 0)
+            # Add length prefix for TCP (4 bytes, network byte order)
+            target.write([binary.bytesize].pack("N") + binary)
           rescue => e
             log("TCP Send Error to #{address}:#{port} - #{e}")
             @clients.delete(target.addr)

@@ -16,7 +16,8 @@ class Game_Temp
       state: [:idle, nil],
       seed: 0,
       battle_player: nil,
-      online_variables: {}
+      online_variables: {},
+      using_external_server: false  # Runtime flag for which server type is being used
     }
   end
 end
@@ -365,54 +366,93 @@ MenuHandlers.add(:pause_menu, :vms, {
     menu.pbHideMenu
 
     if VMS::USE_EXTERNAL_SERVER
-      # External Server Mode: Create cluster or Browse clusters
-      choices = ["Create cluster", "Browse clusters", "Cancel"]
-      choice = VMS.message(VMS::MENU_CHOICES_MESSAGE, choices)
-      case choice
-      when 0 # Create cluster
-        VMS.join(rand(10000...99999))
-      when 1 # Browse clusters
-        # Get cluster list from server
-        clusters = VMS.get_cluster_list
+      # When external server is enabled, show Local Play / Online Play choice
+      mode_choices = ["Local Play", "Online Play", "Cancel"]
+      mode_choice = VMS.message(_INTL("Choose a play mode:"), mode_choices)
 
-        if clusters.empty?
-          # No clusters available
-          if pbConfirmMessage(VMS::NO_CLUSTERS_AVAILABLE_MESSAGE)
-            VMS.join(rand(10000...99999))
+      case mode_choice
+      when 0 # Local Play (Integrated Server)
+        $game_temp.vms[:using_external_server] = false
+        choices = ["Host Game", "Join Server", "Cancel"]
+        choice = VMS.message(VMS::MENU_CHOICES_MESSAGE, choices)
+        case choice
+        when 0 # Host Game
+          VMS::IntegratedServer.start
+          VMS.target_host = "127.0.0.1"
+          VMS.join(0)
+        when 1 # Join Server
+          VMS.target_host = "127.0.0.1"
+          ip = pbEnterBoxName(_INTL("Enter Server IPv4"), 0, 15, VMS.target_host)
+          if !ip.nil? && ip != ""
+            VMS.target_host = ip
+            VMS.join(0)
           else
             menu.pbShowMenu
             menu.pbRefresh
             next false
           end
-        else
-          # Build choice list with cluster info
-          cluster_choices = []
-          clusters.each do |cluster|
-            cluster_choices.push("Cluster #{cluster[:id]} (#{cluster[:player_count]}/4 players)")
-          end
-          cluster_choices.push("Cancel")
-
-          # Show cluster selection
-          cluster_choice = VMS.message(VMS::SELECT_CLUSTER_MESSAGE, cluster_choices)
-
-          if cluster_choice >= 0 && cluster_choice < clusters.length
-            # Join selected cluster
-            selected_cluster = clusters[cluster_choice]
-            VMS.join(selected_cluster[:id])
-          else
-            # Cancel
-            menu.pbShowMenu
-            menu.pbRefresh
-            next false
-          end
+        when 2 # Cancel
+          menu.pbShowMenu
+          menu.pbRefresh
+          next false
         end
+
+      when 1 # Online Play (External Server)
+        $game_temp.vms[:using_external_server] = true
+        choices = ["Create cluster", "Browse clusters", "Cancel"]
+        choice = VMS.message(VMS::MENU_CHOICES_MESSAGE, choices)
+        case choice
+        when 0 # Create cluster
+          VMS.join(rand(10000...99999))
+        when 1 # Browse clusters
+          # Get cluster list from server
+          clusters = VMS.get_cluster_list
+
+          if clusters.empty?
+            # No clusters available
+            if pbConfirmMessage(VMS::NO_CLUSTERS_AVAILABLE_MESSAGE)
+              VMS.join(rand(10000...99999))
+            else
+              menu.pbShowMenu
+              menu.pbRefresh
+              next false
+            end
+          else
+            # Build choice list with cluster info
+            cluster_choices = []
+            clusters.each do |cluster|
+              cluster_choices.push("Cluster #{cluster[:id]} (#{cluster[:player_count]}/4 players)")
+            end
+            cluster_choices.push("Cancel")
+
+            # Show cluster selection
+            cluster_choice = VMS.message(VMS::SELECT_CLUSTER_MESSAGE, cluster_choices)
+
+            if cluster_choice >= 0 && cluster_choice < clusters.length
+              # Join selected cluster
+              selected_cluster = clusters[cluster_choice]
+              VMS.join(selected_cluster[:id])
+            else
+              # Cancel
+              menu.pbShowMenu
+              menu.pbRefresh
+              next false
+            end
+          end
+        when 2 # Cancel
+          menu.pbShowMenu
+          menu.pbRefresh
+          next false
+        end
+
       when 2 # Cancel
         menu.pbShowMenu
         menu.pbRefresh
         next false
       end
     else
-      # Integrated Server Mode: Host Game or Join Server
+      # External server disabled - only show Integrated Server options
+      $game_temp.vms[:using_external_server] = false
       choices = ["Host Game", "Join Server", "Cancel"]
       choice = VMS.message(VMS::MENU_CHOICES_MESSAGE, choices)
       case choice

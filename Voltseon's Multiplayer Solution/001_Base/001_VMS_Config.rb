@@ -1,11 +1,13 @@
 module VMS
   # ===========
-  # Debug 
+  # Debug
   # ===========
 
-  # If external server is configured, if false, external server option will not show up on the menu
-
+  # If true, the menu will show "Local Play" and "Online Play" options.
+  # If false, only integrated server (local play) options will be available.
   USE_EXTERNAL_SERVER = false
+
+  # External server connection settings (used when "Online Play" is selected)
   EXTERNALHOST = "127.0.0.1"
   EXTERNALPORT = 12345
 

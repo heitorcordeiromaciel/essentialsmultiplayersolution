@@ -12,9 +12,9 @@ module VMS
       VMS.log("Already connected to a server")
       return
     end
-    # Determine connection parameters based on server type
-    host = VMS::USE_EXTERNAL_SERVER ? VMS::EXTERNALHOST : VMS.target_host
-    port = VMS::USE_EXTERNAL_SERVER ? VMS::EXTERNALPORT : VMS::PORT
+    # Determine connection parameters based on runtime server type
+    host = $game_temp.vms[:using_external_server] ? VMS::EXTERNALHOST : VMS.target_host
+    port = $game_temp.vms[:using_external_server] ? VMS::EXTERNALPORT : VMS::PORT
     # Create socket
     begin
       if VMS::USE_TCP
@@ -42,7 +42,7 @@ module VMS
   # Usage: VMS.leave (disconnects from the server)
   def self.leave(show_message = true)
     # Only stop integrated server if not using external server
-    VMS::IntegratedServer.stop if !VMS::USE_EXTERNAL_SERVER && defined?(VMS::IntegratedServer)
+    VMS::IntegratedServer.stop if !$game_temp.vms[:using_external_server] && defined?(VMS::IntegratedServer)
     if $game_temp.vms[:socket].nil? # Not connected
       VMS.log("Not connected to a server") if show_message
       return
@@ -61,6 +61,7 @@ module VMS
     $game_temp.vms[:ping_stamp] = 0
     $game_temp.vms[:players] = {}
     $game_temp.vms[:online_variables] = {}
+    $game_temp.vms[:using_external_server] = false
     VMS.log("Disconnected from server") if show_message
     VMS.message(VMS::DISCONNECTED_MESSAGE) if !(VMS::DISCONNECTED_MESSAGE.nil? || VMS::DISCONNECTED_MESSAGE == "" || !show_message)
   end

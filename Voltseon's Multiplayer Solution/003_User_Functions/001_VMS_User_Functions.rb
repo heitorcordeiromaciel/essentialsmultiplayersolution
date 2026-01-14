@@ -166,9 +166,9 @@ module VMS
   # Usage: VMS.get_cluster_list (requests and returns a list of available clusters from the server)
   def self.get_cluster_list
     begin
-      # Determine connection parameters based on server type
-      host = VMS::USE_EXTERNAL_SERVER ? VMS::EXTERNALHOST : VMS.target_host
-      port = VMS::USE_EXTERNAL_SERVER ? VMS::EXTERNALPORT : VMS::PORT
+      # Determine connection parameters based on runtime server type
+      host = $game_temp.vms[:using_external_server] ? VMS::EXTERNALHOST : VMS.target_host
+      port = $game_temp.vms[:using_external_server] ? VMS::EXTERNALPORT : VMS::PORT
       # Create temporary socket
       if VMS::USE_TCP
         socket = TCPSocket.new(host, port)
