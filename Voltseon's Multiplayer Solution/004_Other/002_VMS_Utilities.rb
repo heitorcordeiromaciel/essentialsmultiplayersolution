@@ -1,3 +1,10 @@
+class String
+  def numeric?
+    return true if self =~ /\A\d+\z/
+    true if Float(self) rescue false
+  end
+end
+
 module VMS
   def self.basic_type?(variable)
     [Integer, Float, String, Symbol, TrueClass, FalseClass, NilClass].any? { |type| variable.is_a?(type) }
@@ -38,6 +45,8 @@ module VMS
 
   def self.decrypt(data, instance = nil)
     return data unless data.is_a?(Hash)
+    return data unless data[:class] # Safety check
+
     defaults = VMS::ENCRYPTION_DEFAULTS[data[:class].name]
     case data[:class]
     when Array
@@ -64,8 +73,19 @@ module VMS
           end
         end
       end
-    end 
-    data.each do |var, val|
+    end
+    # Sort numeric string keys to ensure correct array order
+    sorted_keys = data.keys.sort_by do |k|
+      if k.is_a?(String) && k.numeric?
+        k.to_i
+      else
+        # Non-numeric keys stay in original order (use a large number to sort them last)
+        k == :class ? -1 : 999999
+      end
+    end
+
+    sorted_keys.each do |var|
+      val = data[var]
       next if var == :class
       if var.is_a?(String) && var.numeric?
         instance[var.to_i] = VMS.decrypt(val)

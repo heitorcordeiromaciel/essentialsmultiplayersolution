@@ -354,11 +354,7 @@ module VMS
 
   # Usage: VMS.update_party(player #<VMS::Player>) (updates the player's party)
   def self.update_party(player)
-    new_party = []
-    player.party.each do |pkmn|
-      new_party.push(pkmn.is_a?(::Pokemon) ? pkmn : VMS.dehash_pokemon(pkmn))
-    end
-    player.party = new_party
+    # Pokemon objects are now sent directly, no need to deserialize
     return player.party
   end
 

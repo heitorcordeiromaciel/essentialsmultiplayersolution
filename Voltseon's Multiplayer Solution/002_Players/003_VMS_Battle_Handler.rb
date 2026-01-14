@@ -19,7 +19,6 @@ module VMS
       $game_temp.vms[:battle_type] = type
       
       # Party Selection Phase
-      serialized_party = nil
       new_party = nil
       # Always show selection screen for ordering, unless party is empty (which shouldn't happen)
       if $player.party.length > 0
@@ -35,35 +34,23 @@ module VMS
           screen = PokemonPartyScreen.new(scene, $player.party)
           new_party = screen.pbPokemonMultipleEntryScreenEx(ruleset)
         }
-        if new_party
-          VMS.log("Selected party size: #{new_party.length}")
-          serialized_party = VMS.encrypt(new_party)
-          VMS.log("Serialized party: #{serialized_party.nil? ? 'nil' : 'valid'}")
-        else
+        if !new_party
           $game_temp.vms[:state] = [:idle, nil]
           return
         end
       end
-      
-      # Sync selection
-      $game_temp.vms[:state] = [:battle_selection, player.id, serialized_party]
+
+      # Sync selection - send the party array directly (no serialization)
+      $game_temp.vms[:state] = [:battle_selection, player.id, new_party]
       if !VMS.await_player_state(player, :battle_selection, _INTL("Waiting for {1} to select Pokémon...", player.name), true, true)
         $game_temp.vms[:state] = [:idle, nil]
         return
       end
-      opponent_party_data = player.state[2]
-      VMS.log("Received opponent party data: #{opponent_party_data.nil? ? 'nil' : 'valid'}")
-
-      # Filter parties
-      filtered_opponent_party = []
-      if opponent_party_data
-        filtered_opponent_party = VMS.decrypt(opponent_party_data)
-        VMS.log("Decrypted opponent party size: #{filtered_opponent_party.nil? ? 'nil' : filtered_opponent_party.length}")
-      end
+      # Receive the party array directly (no deserialization needed)
+      filtered_opponent_party = player.state[2]
 
       # Validate opponent party
-      if filtered_opponent_party.nil? || filtered_opponent_party.empty?
-        VMS.log("Opponent party is empty or invalid", true)
+      if filtered_opponent_party.nil? || !filtered_opponent_party.is_a?(Array) || filtered_opponent_party.empty?
         VMS.message(_INTL("Unable to start battle - opponent has no valid Pokémon."))
         $game_temp.vms[:state] = [:idle, nil]
         return
@@ -74,10 +61,10 @@ module VMS
 
       trainer = NPCTrainer.new(player.name, player.trainer_type, 0)
       trainer.party = filtered_opponent_party
-      
+
       # Re-seed right before battle starts to prevent UI-induced drift
       srand($game_temp.vms[:seed])
-      
+
       TrainerBattle.start_core_VMS(trainer)
       
       # Restore party
@@ -88,8 +75,6 @@ module VMS
       $game_temp.vms[:state] = [:idle, nil]
       VMS.sync_seed
     rescue StandardError => e
-      VMS.log("An error occurred whilst battling: #{e.message}", true)
-      VMS.log(e.backtrace.join("\n"), true)
       VMS.message(_INTL("An error has occurred: {1}", e.message))
       $player.party = old_party if old_party
       $game_temp.vms[:state] = [:idle, nil]
@@ -224,9 +209,10 @@ class Battle
         end
         if player.state&.length >= 4 && player.state[0] == :battle_new_switch
           # player.state[2] is the battler index from the opponent's perspective
-          # If they are switching their battler 0, it's my battler 1.
-          # If they are switching their battler 2, it's my battler 3.
-          opp_idx = (idxBattler == 1) ? 0 : 2
+          # Players face each other, so indices are flipped:
+          # If they are switching their battler 0 (their left), it's my battler 3 (their left from my view = my right).
+          # If they are switching their battler 2 (their right), it's my battler 1 (their right from my view = my left).
+          opp_idx = (idxBattler == 1) ? 2 : 0
           if player.state[2] == opp_idx
             msgwindow.visible = false
             msgwindow.setText("")
@@ -288,7 +274,10 @@ class Battle
           if opp_turn == @battle.turnCount
             msgwindow.visible = false
             msgwindow.setText("")
-            opp_idx = (idxBattler == 1) ? 0 : 2
+            # Map battler indices correctly (players face each other, so left/right are flipped):
+            # idxBattler 1 (opponent's left from my view) = opponent's index 2 (their right from their view)
+            # idxBattler 3 (opponent's right from my view) = opponent's index 0 (their left from their view)
+            opp_idx = (idxBattler == 1) ? 2 : 0
             if player.state.length >= 4 && player.state[3]&.length > opp_idx && player.state[3][opp_idx]&.length >= 1
               case player.state[3][opp_idx][0]
               when :SwitchOut
