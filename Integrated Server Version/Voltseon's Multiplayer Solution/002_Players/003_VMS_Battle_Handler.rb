@@ -116,11 +116,47 @@ class Battle
         # @choices is an array of arrays: [type, index, move_object, target, item]
         [choice[0], choice[1], nil, choice[3], choice[4]]
       end
-      owner = pbGetOwnerIndexFromBattlerIndex(@battlers[0].index)
-      mega_idx = @megaEvolution[0][owner]
-      zmove_idx = @zMove[0][owner] rescue -1
-      dynamax_idx = @dynamax[0][owner] rescue -1
-      tera_idx = @terastallize[0][owner] rescue -1
+
+      # Collect special move indices for all player-owned battlers
+      mega_indices = []
+      zmove_indices = []
+      dynamax_indices = []
+      tera_indices = []
+
+      @battlers.each do |battler|
+        next if !battler || !pbOwnedByPlayer?(battler.index)
+        owner = pbGetOwnerIndexFromBattlerIndex(battler.index)
+
+        # Check each special move type and store the battler index if active
+        if @megaEvolution[0][owner] >= 0
+          mega_indices << battler.index
+        end
+        begin
+          if @zMove[0][owner] >= 0
+            zmove_indices << battler.index
+          end
+        rescue
+        end
+        begin
+          if @dynamax[0][owner] >= 0
+            dynamax_indices << battler.index
+          end
+        rescue
+        end
+        begin
+          if @terastallize[0][owner] >= 0
+            tera_indices << battler.index
+          end
+        rescue
+        end
+      end
+
+      # Send the first index from each array (or -1 if empty)
+      mega_idx = mega_indices.length > 0 ? mega_indices[0] : -1
+      zmove_idx = zmove_indices.length > 0 ? zmove_indices[0] : -1
+      dynamax_idx = dynamax_indices.length > 0 ? dynamax_indices[0] : -1
+      tera_idx = tera_indices.length > 0 ? tera_indices[0] : -1
+
       $game_temp.vms[:state] = [:battle_command, $game_temp.vms[:state][1], @turnCount, picks, mega_idx, zmove_idx, dynamax_idx, tera_idx]
     end
   end
@@ -262,6 +298,9 @@ class Battle
                 end
                 @battle.pbRegisterMove(idxBattler, player.state[3][opp_idx][1], false)
                 @battle.pbRegisterTarget(idxBattler, target)
+                # player.state[4-7] contain the opponent's battler index (from their perspective: 0 or 2)
+                # We need to check if it matches opp_idx (opponent's index from their perspective)
+                # If it matches, register the special move for our corresponding battler (idxBattler: 1 or 3)
                 @battle.pbRegisterMegaEvolution(idxBattler) if player.state.length > 4 && player.state[4] == opp_idx
                 @battle.pbRegisterZMove(idxBattler) if player.state.length > 5 && player.state[5] == opp_idx
                 @battle.pbRegisterDynamax(idxBattler) if player.state.length > 6 && player.state[6] == opp_idx
