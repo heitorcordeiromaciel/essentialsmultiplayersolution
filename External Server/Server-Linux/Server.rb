@@ -1,16 +1,3 @@
-# Define stub classes at top level for game objects that may be serialized
-class Pokemon; end
-class PokeBattle_Pokemon; end
-
-module GameData
-  class Species; end
-  class Item; end
-  class Move; end
-  class Type; end
-  class Ability; end
-  class Nature; end
-end
-
 module VMS
   require 'socket'
   require "zlib"
@@ -72,10 +59,10 @@ module VMS
               # Existing client or UDP socket
               begin
                 if Config.use_tcp
-                  data = s.recv_nonblock(65536)
+                  data = s.respond_to?(:recv_nonblock) ? s.recv_nonblock(65536) : s.recv(65536)
                   handle_packet(data, s.addr[3], s.addr[1], s)
                 else
-                  data, address = @socket.recvfrom_nonblock(65536)
+                  data, address = @socket.respond_to?(:recvfrom_nonblock) ? @socket.recvfrom_nonblock(65536) : @socket.recvfrom(65536)
                   handle_packet(data, address[3], address[1])
                 end
               rescue EOFError
@@ -162,19 +149,7 @@ module VMS
     end
 
     def connect(address, port, data, socket = nil)
-      if Config.check_game_and_version
-        game_name = data[PACKET_KEYS[:game_name]]
-        game_version = data[PACKET_KEYS[:game_version]]
-        if game_name != Config.game_name && game_name != "" && !game_name.nil?
-          log("#{get_player_name(data)} tried to connect to cluster #{data[PACKET_KEYS[:cluster_id]]}, but they were using the wrong game (#{game_name}).")
-          send(:disconnect_wrong_game, address, port, socket)
-          return
-        elsif game_version != Config.game_version && game_version != "" && !game_version.nil?
-          log("#{get_player_name(data)} tried to connect to cluster #{data[PACKET_KEYS[:cluster_id]]}, but they were using the wrong version (#{game_version}).")
-          send(:disconnect_wrong_version, address, port, socket)
-          return
-        end
-      end
+      # Removed check_game_and_version to match Integrated Server behavior
       
       player = Player.new(data[PACKET_KEYS[:id]], address, port)
       player.socket = socket
