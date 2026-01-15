@@ -1,3 +1,8 @@
+class Pokemon
+  class Move; end
+  class Owner; end
+end
+
 module VMS
   require 'socket'
   require "zlib"
