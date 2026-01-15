@@ -19,7 +19,7 @@ This fork has been merged into the official Voltseon's Multiplayer Solution plug
 
 ## 1. Downloading the plugin
 
-Download the latest version of the plugin from the **[Releases page](https://github.com/heitorcordeiromaciel/essentialsmultiplayersolution/releases/tag/v3.0.0)**.
+Download the latest version of the plugin from the **[Releases page](https://github.com/heitorcordeiromaciel/essentialsmultiplayersolution/releases/tag/v2.1.0)**.
 
 ## 2. Adding it to your project (client)
 
