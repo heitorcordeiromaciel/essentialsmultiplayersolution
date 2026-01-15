@@ -262,7 +262,6 @@ module VMS
     attr_accessor :is_new
 
     def party
-      @party = VMS.update_party(self)
       return @party
     end
   end

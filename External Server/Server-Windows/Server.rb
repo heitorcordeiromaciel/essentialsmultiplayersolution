@@ -1,3 +1,16 @@
+# Define stub classes at top level for game objects that may be serialized
+class Pokemon; end
+class PokeBattle_Pokemon; end
+
+module GameData
+  class Species; end
+  class Item; end
+  class Move; end
+  class Type; end
+  class Ability; end
+  class Nature; end
+end
+
 module VMS
   require 'socket'
   require "zlib"

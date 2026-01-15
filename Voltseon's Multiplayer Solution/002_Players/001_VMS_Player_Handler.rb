@@ -191,12 +191,15 @@ module VMS
         # Check if a battle would be possible
         battle_possible = false
         $player.party.each do |pkmn|
-          battle_possible = true if pkmn.able?
+          battle_possible = true if pkmn && pkmn.able?
         end
         if battle_possible
           battle_possible = false
-          VMS.update_party(player).each do |pkmn|
-            battle_possible = true if pkmn.able?
+          opponent_party = VMS.update_party(player)
+          if opponent_party && opponent_party.is_a?(Array)
+            opponent_party.each do |pkmn|
+              battle_possible = true if pkmn && pkmn.able?
+            end
           end
         end
         if !battle_possible
@@ -352,10 +355,11 @@ module VMS
     return false
   end
 
-  # Usage: VMS.update_party(player #<VMS::Player>) (updates the player's party)
+  # Usage: VMS.update_party(player #<VMS::Player>) (returns the player's party)
   def self.update_party(player)
-    # Pokemon objects are now sent directly, no need to deserialize
-    return player.party
+    # Party is automatically deserialized in VMS::Player.update method
+    # This method now just returns the party directly
+    return player.party || []
   end
 
   # Usage: VMS.sync_animations(player #<VMS::Player>) (syncs the player's animations)

@@ -69,7 +69,23 @@ module VMS
           @heartbeat = value
           next
         end
-        instance_variable_set("@#{key}", value)
+        # Special handling for party data - deserialize from strings to Pokemon objects
+        if key == :party && value.is_a?(Array) && !value.empty?
+          deserialized_party = []
+          value.each do |pkmn_data|
+            next if pkmn_data.nil?
+            # Check if it's a serialized string that needs dehashing
+            if pkmn_data.is_a?(String)
+              deserialized_party.push(VMS.dehash_pokemon(pkmn_data))
+            else
+              # Already a Pokemon object
+              deserialized_party.push(pkmn_data)
+            end
+          end
+          @party = deserialized_party
+        else
+          instance_variable_set("@#{key}", value)
+        end
       end
     end
 

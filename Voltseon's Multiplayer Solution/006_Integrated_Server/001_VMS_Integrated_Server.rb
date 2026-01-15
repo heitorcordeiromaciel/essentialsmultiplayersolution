@@ -301,7 +301,7 @@ module VMS
           return if data[hb_key] < @heartbeat
           @heartbeat = data[hb_key]
         end
-        
+
         data.each do |k, v|
           next if k == hb_key
           @data[k] = v

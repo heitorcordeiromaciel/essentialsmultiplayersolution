@@ -56,19 +56,18 @@ module VMS
         return
       end
 
-      old_party = $player.party.dup
+      old_party = $player.party
       $player.party = new_party if new_party
 
       trainer = NPCTrainer.new(player.name, player.trainer_type, 0)
       trainer.party = filtered_opponent_party
 
-      # Re-seed right before battle starts to prevent UI-induced drift
       srand($game_temp.vms[:seed])
 
       TrainerBattle.start_core_VMS(trainer)
-      
-      # Restore party
+
       $player.party = old_party
+      $player.party.each { |pkmn| pkmn.heal if pkmn }
       
       $game_temp.vms[:battle_player] = nil
       $game_temp.vms[:battle_type] = nil
@@ -108,53 +107,72 @@ class Battle
     @vms_random_calls = 0 if isPlayer # Reset counter for the new turn
     vms_pbCommandPhaseLoop(isPlayer)
     if VMS.is_connected? && isPlayer
-      picks = @choices.map do |choice|
-        next nil if choice.nil?
-        # @choices is an array of arrays: [type, index, move_object, target, item]
-        [choice[0], choice[1], nil, choice[3], choice[4]]
+      is_single = $game_temp.vms[:battle_type] != :double
+      battler_indices = is_single ? [0] : [0, 2]
+      picks = []
+      battler_indices.each do |idx|
+        choice = @choices[idx]
+        if choice.nil?
+          picks << nil
+        else
+          picks << [choice[0], choice[1], nil, choice[3], choice[4]]
+        end
       end
 
-      # Collect special move indices for all player-owned battlers
-      mega_indices = []
-      zmove_indices = []
-      dynamax_indices = []
-      tera_indices = []
+      mega_idx_0 = -1
+      mega_idx_2 = -1
+      z_idx_0 = -1
+      z_idx_2 = -1
+      dyna_idx_0 = -1
+      dyna_idx_2 = -1
+      tera_idx_0 = -1
+      tera_idx_2 = -1
 
       @battlers.each do |battler|
         next if !battler || !pbOwnedByPlayer?(battler.index)
         owner = pbGetOwnerIndexFromBattlerIndex(battler.index)
+        battler_idx = battler.index
 
-        # Check each special move type and store the battler index if active
-        if @megaEvolution[0][owner] >= 0
-          mega_indices << battler.index
+        if @megaEvolution[0][owner] >= 0 && @megaEvolution[0][owner] == battler_idx
+          if battler_idx == 0
+            mega_idx_0 = 0
+          elsif battler_idx == 2
+            mega_idx_2 = 2
+          end
         end
         begin
-          if @zMove[0][owner] >= 0
-            zmove_indices << battler.index
+          if @zMove[0][owner] >= 0 && @zMove[0][owner] == battler_idx
+            if battler_idx == 0
+              z_idx_0 = 0
+            elsif battler_idx == 2
+              z_idx_2 = 2
+            end
           end
         rescue
         end
         begin
-          if @dynamax[0][owner] >= 0
-            dynamax_indices << battler.index
+          if @dynamax[0][owner] >= 0 && @dynamax[0][owner] == battler_idx
+            if battler_idx == 0
+              dyna_idx_0 = 0
+            elsif battler_idx == 2
+              dyna_idx_2 = 2
+            end
           end
         rescue
         end
         begin
-          if @terastallize[0][owner] >= 0
-            tera_indices << battler.index
+          if @terastallize[0][owner] >= 0 && @terastallize[0][owner] == battler_idx
+            if battler_idx == 0
+              tera_idx_0 = 0
+            elsif battler_idx == 2
+              tera_idx_2 = 2
+            end
           end
         rescue
         end
       end
 
-      # Send the first index from each array (or -1 if empty)
-      mega_idx = mega_indices.length > 0 ? mega_indices[0] : -1
-      zmove_idx = zmove_indices.length > 0 ? zmove_indices[0] : -1
-      dynamax_idx = dynamax_indices.length > 0 ? dynamax_indices[0] : -1
-      tera_idx = tera_indices.length > 0 ? tera_indices[0] : -1
-
-      $game_temp.vms[:state] = [:battle_command, $game_temp.vms[:state][1], @turnCount, picks, mega_idx, zmove_idx, dynamax_idx, tera_idx]
+      $game_temp.vms[:state] = [:battle_command, $game_temp.vms[:state][1], @turnCount, picks, mega_idx_0, mega_idx_2, z_idx_0, z_idx_2, dyna_idx_0, dyna_idx_2, tera_idx_0, tera_idx_2]
     end
   end
 
@@ -174,8 +192,6 @@ class Battle
     return ret
   end
 
-  # For choosing a replacement Pokémon when prompted in the middle of other
-  # things happening (U-turn, Baton Pass, in def pbEORSwitch).
   def pbSwitchInBetween(idxBattler, checkLaxOnly = false, canCancel = false)
     if !@controlPlayer && pbOwnedByPlayer?(idxBattler)
       newIndex = pbPartyScreen(idxBattler, checkLaxOnly, canCancel)
@@ -186,7 +202,6 @@ class Battle
   end
 
   class VMS_AI < AI
-    # Choosing a new switch in pokémon
     def pbDefaultChooseNewEnemy(idxBattler)
       set_up(idxBattler)
       player_name = $game_temp.vms[:state][1] ? VMS.get_player($game_temp.vms[:state][1])&.name : "Unknown"
@@ -208,11 +223,8 @@ class Battle
           return -1
         end
         if player.state&.length >= 4 && player.state[0] == :battle_new_switch
-          # player.state[2] is the battler index from the opponent's perspective
-          # Players face each other, so indices are flipped:
-          # If they are switching their battler 0 (their left), it's my battler 3 (their left from my view = my right).
-          # If they are switching their battler 2 (their right), it's my battler 1 (their right from my view = my left).
-          opp_idx = (idxBattler == 1) ? 2 : 0
+          is_single = $game_temp.vms[:battle_type] != :double
+          opp_idx = is_single ? 0 : ((idxBattler == 1) ? 0 : 2)
           if player.state[2] == opp_idx
             msgwindow.visible = false
             msgwindow.setText("")
@@ -231,16 +243,13 @@ class Battle
       end
     end
 
-    # Choose an action.
     def pbDefaultChooseEnemyCommand(idxBattler)
       set_up(idxBattler)
       ret = false
       player_info = $game_temp.vms[:battle_player]
       player_name = player_info.name
       msgwindow = @battle.scene.sprites["messageWindow"]
-      
-      # Turn Buffering: Check if we already have the command for this turn
-      # (The opponent might have sent it while we were still playing animations)
+
       loop do
         player = VMS.get_player(player_info.id)
         if player.nil?
@@ -257,7 +266,6 @@ class Battle
           msgwindow.setText("")
           return
         end
-        # Check if opponent has forfeited (state is :idle, meaning they left the battle)
         if player.state&.length >= 1 && player.state[0] == :idle
           msgwindow.visible = false
           msgwindow.setText("")
@@ -266,28 +274,24 @@ class Battle
           return
         end
 
-        # State validation: Ensure we are looking at a battle_command for the CURRENT or FUTURE turn
         if player.state&.length >= 3 && player.state[0] == :battle_command
           opp_turn = player.state[2]
-          
-          # If opponent is on the same turn, process it
+
           if opp_turn == @battle.turnCount
             msgwindow.visible = false
             msgwindow.setText("")
-            # Map battler indices correctly (players face each other, so left/right are flipped):
-            # idxBattler 1 (opponent's left from my view) = opponent's index 2 (their right from their view)
-            # idxBattler 3 (opponent's right from my view) = opponent's index 0 (their left from their view)
-            opp_idx = (idxBattler == 1) ? 2 : 0
-            if player.state.length >= 4 && player.state[3]&.length > opp_idx && player.state[3][opp_idx]&.length >= 1
-              case player.state[3][opp_idx][0]
+            is_single = $game_temp.vms[:battle_type] != :double
+            picks_idx = is_single ? 0 : ((idxBattler == 1) ? 0 : 1)
+            if player.state.length >= 4 && player.state[3]&.length > picks_idx && player.state[3][picks_idx]&.length >= 1
+              case player.state[3][picks_idx][0]
               when :SwitchOut
-                @battle.pbRegisterSwitch(idxBattler, player.state[3][opp_idx][1])
+                @battle.pbRegisterSwitch(idxBattler, player.state[3][picks_idx][1])
                 return
               when :UseItem
-                @battle.pbRegisterItem(idxBattler, player.state[3][opp_idx][1], player.state[3][opp_idx][2], player.state[3][opp_idx][3])
+                @battle.pbRegisterItem(idxBattler, player.state[3][picks_idx][1], player.state[3][picks_idx][2], player.state[3][picks_idx][3])
                 return
               when :UseMove
-                target = player.state[3][opp_idx][3]
+                target = player.state[3][picks_idx][3]
                 if @battle.pbSideSize(0) > 1 && target.is_a?(Integer) && target >= 0
                   target = case target
                            when 0 then 1
@@ -297,15 +301,41 @@ class Battle
                            else target
                            end
                 end
-                @battle.pbRegisterMove(idxBattler, player.state[3][opp_idx][1], false)
+                @battle.pbRegisterMove(idxBattler, player.state[3][picks_idx][1], false)
                 @battle.pbRegisterTarget(idxBattler, target)
-                # player.state[4-7] contain the opponent's battler index (from their perspective: 0 or 2)
-                # We need to check if it matches opp_idx (opponent's index from their perspective)
-                # If it matches, register the special move for our corresponding battler (idxBattler: 1 or 3)
-                @battle.pbRegisterMegaEvolution(idxBattler) if player.state.length > 4 && player.state[4] == opp_idx
-                @battle.pbRegisterZMove(idxBattler) if player.state.length > 5 && player.state[5] == opp_idx
-                @battle.pbRegisterDynamax(idxBattler) if player.state.length > 6 && player.state[6] == opp_idx
-                @battle.pbRegisterTerastallize(idxBattler) if player.state.length > 7 && player.state[7] == opp_idx
+                # New format: player.state[4-11] = [mega_0, mega_2, z_0, z_2, dyna_0, dyna_2, tera_0, tera_2]
+                # Their battler 0 (left) → our idxBattler 1, their battler 2 (right) → our idxBattler 3
+                if player.state.length >= 12
+                  mega_0 = player.state[4]
+                  mega_2 = player.state[5]
+                  z_0 = player.state[6]
+                  z_2 = player.state[7]
+                  dyna_0 = player.state[8]
+                  dyna_2 = player.state[9]
+                  tera_0 = player.state[10]
+                  tera_2 = player.state[11]
+
+                  # Map: their battler 0 (L) → our battler 1 (L), their battler 2 (R) → our battler 3 (R)
+                  if idxBattler == 1
+                    # Processing their battler 0 (their left = our left when facing them)
+                    @battle.pbRegisterMegaEvolution(idxBattler) if mega_0 == 0
+                    @battle.pbRegisterZMove(idxBattler) if z_0 == 0
+                    @battle.pbRegisterDynamax(idxBattler) if dyna_0 == 0
+                    if tera_0 == 0
+                      VMS.log("DEBUG: Registering Terastallize for idxBattler=#{idxBattler} (their battler 0)")
+                      @battle.pbRegisterTerastallize(idxBattler)
+                    end
+                  elsif idxBattler == 3
+                    # Processing their battler 2 (their right = our right when facing them)
+                    @battle.pbRegisterMegaEvolution(idxBattler) if mega_2 == 2
+                    @battle.pbRegisterZMove(idxBattler) if z_2 == 2
+                    @battle.pbRegisterDynamax(idxBattler) if dyna_2 == 2
+                    if tera_2 == 2
+                      VMS.log("DEBUG: Registering Terastallize for idxBattler=#{idxBattler} (their battler 2)")
+                      @battle.pbRegisterTerastallize(idxBattler)
+                    end
+                  end
+                end
                 return
               end
             end
@@ -332,7 +362,6 @@ end
 class TrainerBattle
   def self.start_core_VMS(*args)
     outcome_variable = $game_temp.battle_rules["outcomeVar"] || 1
-    can_lose         = $game_temp.battle_rules["canLose"] || false
     # Skip battle if the player has no able Pokémon, or if holding Ctrl in Debug mode
     if BattleCreationHelperMethods.skip_battle?
       return BattleCreationHelperMethods.skip_battle(outcome_variable, true)
@@ -354,25 +383,27 @@ class TrainerBattle
     battle.ally_items   = ally_items
     battle.items        = foe_items
     battle.internalBattle = false
-    # Set various other properties in the battle class
     setBattleRule("canLose")
     setBattleRule("noExp")
     setBattleRule("noMoney")
+    begin
+      setBattleRule("noBag")
+    rescue ArgumentError
+    end
     if $game_temp.vms[:battle_type] == :double
       setBattleRule("double")
     else
-      setBattleRule("#{foe_trainers.length}v#{foe_trainers.length}") if $game_temp.battle_rules["size"].nil?
+      setBattleRule("single") if $game_temp.battle_rules["size"].nil?
     end
+    can_lose = $game_temp.battle_rules["canLose"] || false
     BattleCreationHelperMethods.prepare_battle(battle)
     $game_temp.clear_battle_rules
-    # Perform the battle itself
     outcome = 0
     pbBattleAnimation(pbGetTrainerBattleBGM(foe_trainers), (battle.singleBattle?) ? 1 : 3, foe_trainers) do
       pbSceneStandby { outcome = battle.pbStartBattle }
       BattleCreationHelperMethods.after_battle(outcome, can_lose)
     end
     Input.update
-    # Save the result of the battle in a Game Variable (1 by default)
     BattleCreationHelperMethods.set_outcome(outcome, outcome_variable, true)
     return outcome
   end
