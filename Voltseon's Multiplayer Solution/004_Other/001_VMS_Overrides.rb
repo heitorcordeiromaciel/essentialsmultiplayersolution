@@ -17,7 +17,15 @@ class Game_Temp
       seed: 0,
       battle_player: nil,
       online_variables: {},
-      using_external_server: false  # Runtime flag for which server type is being used
+      using_external_server: false,  # Runtime flag for which server type is being used
+      # Multi Battle state
+      mb_lobby_id: nil,
+      mb_team_idx: nil,
+      mb_slot_idx: nil,
+      mb_local_battler_idx: nil,
+      mb_local_to_global: {},
+      mb_global_to_local: {},
+      mb_in_battle: false
     }
   end
 end
@@ -498,3 +506,36 @@ MenuHandlers.add(:pause_menu, :vms_disconnect, {
     next false
   }
 })
+
+MenuHandlers.add(:pause_menu, :vms_multibattle, {
+  "name"      => VMS::MB_MENU_NAME,
+  "order"     => 46,
+  "condition" => proc {
+    VMS::ACCESSIBLE_PROC.call &&
+    VMS::ACCESSIBLE_FROM_PAUSE_MENU &&
+    VMS.is_connected? &&
+    $game_temp.vms[:state][0] == :idle
+  },
+  "effect" => proc { |menu|
+    menu.pbHideMenu
+    VMS.open_multibattle_menu
+    menu.pbEndScene
+    next true
+  }
+})
+
+# ===========================================================================
+# Battle#pbOwnedByPlayer? override for multibattle
+# In multibattle, only battler index 0 is locally controlled. All others
+# (ally at 2, opponents at 1 and 3) are handled by VMS_Multibattle_AI.
+# ===========================================================================
+class Battle
+  alias vms_mb_pbOwnedByPlayer? pbOwnedByPlayer? unless method_defined?(:vms_mb_pbOwnedByPlayer?)
+
+  def pbOwnedByPlayer?(idxBattler)
+    if VMS.is_connected? && VMS.multibattle_active? && @battleAI.is_a?(Battle::VMS_Multibattle_AI)
+      return idxBattler == 0
+    end
+    return vms_mb_pbOwnedByPlayer?(idxBattler)
+  end
+end

@@ -74,7 +74,9 @@ module VMS
       $game_temp.vms[:ping_log].push((VMS.ping * 500).round)
       $game_temp.vms[:ping_log].shift if $game_temp.vms[:ping_log].size > 50
       ping = [$game_temp.vms[:ping_log].sum / $game_temp.vms[:ping_log].size, 0].max
-      System.set_window_title(System.game_title + (ping != -1 ? " (#{ping}ms)" : ""))
+      cluster_id = VMS.get_cluster_id
+      cluster_str = cluster_id && cluster_id >= 0 ? " [Cluster #{cluster_id}]" : ""
+      System.set_window_title(System.game_title + (ping != -1 ? " (#{ping}ms)" : "") + cluster_str)
     end
     # Actually communicate with the server
     begin

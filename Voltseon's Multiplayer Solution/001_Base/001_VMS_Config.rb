@@ -95,6 +95,16 @@ module VMS
   }
   
   # ===========
+  # Multi Battle
+  # ===========
+  # Maximum seconds to wait in a lobby for all 4 players to join before auto-cancelling.
+  MB_LOBBY_TIMEOUT = 120
+  # Maximum seconds to wait for all players to ready up once 4 slots are filled.
+  MB_READY_TIMEOUT = 60
+  # The name of the Multi Battle option in the pause menu.
+  MB_MENU_NAME = "Multi Battle"
+
+  # ===========
   # Methods
   # ===========
   # Mapping for integer-keyed serialization to reduce bandwidth
