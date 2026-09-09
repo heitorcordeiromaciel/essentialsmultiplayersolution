@@ -729,7 +729,7 @@ class TrainerBattle
     setBattleRule("double")
     begin
       setBattleRule("noBag")
-    rescue ArgumentError
+    rescue
     end
 
     can_lose = true

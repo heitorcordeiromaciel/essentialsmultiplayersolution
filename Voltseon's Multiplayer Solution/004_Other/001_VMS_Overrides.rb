@@ -252,8 +252,88 @@ class Sprite_SurfBase
   end
 end
 
+class Sprite_NameTag
+  TAG_FONT_SIZE = 14
+  TAG_PAD_X     = 6
+  TAG_PAD_Y     = 2
+  TAG_Y_OFFSET  = 40   # pixels above character bottom (character is ~32px tall)
+
+  def initialize(parent_sprite, viewport = nil)
+    @parent_sprite = parent_sprite
+    @viewport      = viewport
+    @sprite        = nil
+    @cached_name   = nil
+    @player_id     = nil
+    begin
+      chr = parent_sprite.character
+      if chr && chr.name
+        m = chr.name.match(/vms_player_(\d+)/i)
+        @player_id = m[1].to_i if m
+      end
+    rescue
+    end
+  end
+
+  def update
+    return if @player_id.nil?
+    player = VMS.get_player(@player_id) rescue nil
+    if player.nil?
+      @sprite&.dispose
+      @sprite      = nil
+      @cached_name = nil
+      return
+    end
+    name = player.name.to_s
+    rebuild_bitmap(name) if name != @cached_name || @sprite.nil? || @sprite.disposed?
+    return unless @sprite && !@sprite.disposed?
+    @sprite.x       = @parent_sprite.x
+    @sprite.y       = @parent_sprite.y - (TAG_Y_OFFSET * @parent_sprite.zoom_y).round
+    @sprite.z       = @parent_sprite.z + 200
+    @sprite.zoom_x  = @parent_sprite.zoom_x
+    @sprite.zoom_y  = @parent_sprite.zoom_y
+    @sprite.opacity = @parent_sprite.opacity
+  end
+
+  def dispose
+    @sprite&.dispose
+    @sprite = nil
+  end
+
+  private
+
+  def rebuild_bitmap(name)
+    old_bmp = @sprite&.bitmap
+    @sprite&.dispose
+    old_bmp&.dispose
+    @cached_name = name
+    tmp = Bitmap.new(1, 1)
+    tmp.font.name = "Power Green"
+    tmp.font.size = TAG_FONT_SIZE
+    tw = tmp.text_size(name).width
+    tmp.dispose
+    bw  = tw + TAG_PAD_X * 2 + 2   # +2 for outline pixels
+    bh  = TAG_FONT_SIZE + TAG_PAD_Y * 2 + 4  # +4 for outline pixels
+    bmp = Bitmap.new(bw, bh)
+    bmp.font.name  = "Power Green"
+    bmp.font.size  = TAG_FONT_SIZE
+    bmp.font.bold  = false
+    bmp.font.color = Color.new(0, 0, 0, 255)
+    [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]].each do |ox, oy|
+      bmp.draw_text(TAG_PAD_X + 1 + ox, TAG_PAD_Y + 1 + oy, tw, TAG_FONT_SIZE + 2, name)
+    end
+    bmp.font.color = Color.new(255, 255, 255, 255)
+    bmp.draw_text(TAG_PAD_X + 1, TAG_PAD_Y + 1, tw, TAG_FONT_SIZE + 2, name)
+    @sprite        = Sprite.new(@viewport)
+    @sprite.bitmap = bmp
+    @sprite.ox     = bw / 2
+    @sprite.oy     = bh
+  end
+end
+
 class Sprite_Character < RPG::Sprite
-  alias vms_initialize initialize unless private_method_defined?(:vms_initialize)
+  alias vms_initialize      initialize unless private_method_defined?(:vms_initialize)
+  alias vms_nametag_update  update     unless method_defined?(:vms_nametag_update)
+  alias vms_nametag_dispose dispose    unless method_defined?(:vms_nametag_dispose)
 
   def initialize(viewport, character = nil)
     vms_initialize(viewport, character)
@@ -261,7 +341,24 @@ class Sprite_Character < RPG::Sprite
       @reflection = Sprite_Reflection.new(self, viewport)
     end
     @surfbase = Sprite_SurfBase.new(self, viewport) if !@surfbase && (character == $game_player || (character.name && character.name[/vms_player_(\d+)$/i] rescue false))
+    if !@vms_nametag && character && character != $game_player
+      begin
+        @vms_nametag = Sprite_NameTag.new(self, viewport) if character.name && character.name[/vms_player_(\d+)$/i]
+      rescue
+      end
+    end
     update
+  end
+
+  def update
+    vms_nametag_update
+    @vms_nametag.update if @vms_nametag
+  end
+
+  def dispose
+    @vms_nametag&.dispose
+    @vms_nametag = nil
+    vms_nametag_dispose
   end
 end
 

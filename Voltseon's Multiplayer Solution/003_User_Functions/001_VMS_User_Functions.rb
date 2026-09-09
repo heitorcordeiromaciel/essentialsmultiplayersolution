@@ -157,9 +157,10 @@ module VMS
   # Usage: VMS.event_deletion_possible?(player #<VMS::Player>) (returns true if the player's event can be deleted)
   def self.event_deletion_possible?(player)
     return false if player.rf_event.nil?
-    return false unless $map_factory.areConnected?(player.map_id, $game_map.map_id) && $scene.is_a?(Scene_Map)
-    return false if $scene.spriteset(player.rf_event[:map_id]).nil?
     return false unless $scene.is_a?(Scene_Map)
+    event_map_id = player.rf_event[:event].map_id
+    return false unless $map_factory.areConnected?(event_map_id, $game_map.map_id)
+    return false if $scene.spriteset(event_map_id).nil?
     return true
   end
 

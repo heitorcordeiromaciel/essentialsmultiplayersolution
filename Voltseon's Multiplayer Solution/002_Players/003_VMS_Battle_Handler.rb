@@ -416,7 +416,7 @@ class TrainerBattle
     setBattleRule("noMoney")
     begin
       setBattleRule("noBag")
-    rescue ArgumentError
+    rescue
     end
     if $game_temp.vms[:battle_type] == :double
       setBattleRule("double")
