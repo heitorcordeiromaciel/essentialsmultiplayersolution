@@ -432,7 +432,7 @@ class PokemonRegionMap_Scene
     return if players.empty?
     @maps = {} if @maps.nil?
     player_meta = $game_map.metadata
-    player_region = (player_meta) ? player_meta.town_map_position[0] : @region >= 0 ? @region : 0
+    player_region = (player_meta && player_meta.town_map_position) ? player_meta.town_map_position[0] : (@region >= 0 ? @region : 0)
     players.each do |player|
       next if player.id == $player.id
       map_metadata = GameData::MapMetadata.try_get(player.map_id)
@@ -445,16 +445,17 @@ class PokemonRegionMap_Scene
       map_x   = position[1]
       map_y   = position[2]
       mapsize  = map_metadata.town_map_size
-      if mapsize && mapsize[0] && mapsize[0] > 0
+      if mapsize && mapsize[0] && mapsize[0] > 0 && mapsize[1]
         sqwidth  = mapsize[0]
         sqheight = (mapsize[1].length.to_f / mapsize[0]).ceil
         map_x += (player.x * sqwidth / map.width).floor if sqwidth > 1
         map_y += (player.y * sqheight / map.height).floor if sqheight > 1
       end
       if @sprites["vms_player_#{player.id}"].nil?
+        next if player.trainer_type.nil?
         @sprites["vms_player_#{player.id}"] = IconSprite.new(0,0,@viewport)
         @sprites["vms_player_#{player.id}"].setBitmap(GameData::TrainerType.player_map_icon_filename(player.trainer_type))
-        @sprites["vms_player_#{player.id}"].z = @sprites["player"].z
+        @sprites["vms_player_#{player.id}"].z = @sprites["player"].z if @sprites["player"]
       end
       @sprites["vms_player_#{player.id}"].x = point_x_to_screen_x(map_x)
       @sprites["vms_player_#{player.id}"].y = point_y_to_screen_y(map_y)
@@ -472,13 +473,13 @@ MenuHandlers.add(:pause_menu, :vms, {
     if VMS::USE_EXTERNAL_SERVER
       # When external server is enabled, show Local Play / Online Play choice
       mode_choices = ["Local Play", "Online Play", "Cancel"]
-      mode_choice = VMS.message(_INTL("Choose a play mode:"), mode_choices)
+      mode_choice = VMS.message(_INTL("Choose a play mode:"), mode_choices, -1)
 
       case mode_choice
       when 0 # Local Play (Integrated Server)
         $game_temp.vms[:using_external_server] = false
         choices = ["Host Game", "Join Server", "Cancel"]
-        choice = VMS.message(VMS::MENU_CHOICES_MESSAGE, choices)
+        choice = VMS.message(VMS::MENU_CHOICES_MESSAGE, choices, -1)
         case choice
         when 0 # Host Game
           VMS::IntegratedServer.start
@@ -495,7 +496,7 @@ MenuHandlers.add(:pause_menu, :vms, {
             menu.pbRefresh
             next false
           end
-        when 2 # Cancel
+        when 2, -1 # Cancel
           menu.pbShowMenu
           menu.pbRefresh
           next false
@@ -504,7 +505,7 @@ MenuHandlers.add(:pause_menu, :vms, {
       when 1 # Online Play (External Server)
         $game_temp.vms[:using_external_server] = true
         choices = ["Create cluster", "Browse clusters", "Cancel"]
-        choice = VMS.message(VMS::MENU_CHOICES_MESSAGE, choices)
+        choice = VMS.message(VMS::MENU_CHOICES_MESSAGE, choices, -1)
         case choice
         when 0 # Create cluster
           VMS.join(rand(10000...99999))
@@ -530,7 +531,7 @@ MenuHandlers.add(:pause_menu, :vms, {
             cluster_choices.push("Cancel")
 
             # Show cluster selection
-            cluster_choice = VMS.message(VMS::SELECT_CLUSTER_MESSAGE, cluster_choices)
+            cluster_choice = VMS.message(VMS::SELECT_CLUSTER_MESSAGE, cluster_choices, -1)
 
             if cluster_choice >= 0 && cluster_choice < clusters.length
               # Join selected cluster
@@ -543,13 +544,13 @@ MenuHandlers.add(:pause_menu, :vms, {
               next false
             end
           end
-        when 2 # Cancel
+        when 2, -1 # Cancel
           menu.pbShowMenu
           menu.pbRefresh
           next false
         end
 
-      when 2 # Cancel
+      when 2, -1 # Cancel
         menu.pbShowMenu
         menu.pbRefresh
         next false
@@ -558,7 +559,7 @@ MenuHandlers.add(:pause_menu, :vms, {
       # External server disabled - only show Integrated Server options
       $game_temp.vms[:using_external_server] = false
       choices = ["Host Game", "Join Server", "Cancel"]
-      choice = VMS.message(VMS::MENU_CHOICES_MESSAGE, choices)
+      choice = VMS.message(VMS::MENU_CHOICES_MESSAGE, choices, -1)
       case choice
       when 0 # Host Game
         VMS::IntegratedServer.start
@@ -575,7 +576,7 @@ MenuHandlers.add(:pause_menu, :vms, {
           menu.pbRefresh
           next false
         end
-      when 2 # Cancel
+      when 2, -1 # Cancel
         menu.pbShowMenu
         menu.pbRefresh
         next false

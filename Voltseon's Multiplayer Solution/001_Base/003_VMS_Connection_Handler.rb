@@ -163,7 +163,9 @@ module VMS
       data.each do |pl|
         # Check for online variables
         if pl[0] == :online_variables
+          old_vars = $game_temp.vms[:online_variables]
           $game_temp.vms[:online_variables] = pl[1]
+          VMS.apply_vmssync_variables(old_vars, pl[1])
           next
         end
         # Get player
