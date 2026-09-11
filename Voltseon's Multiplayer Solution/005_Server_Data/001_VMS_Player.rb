@@ -20,10 +20,25 @@ module VMS
     attr_accessor :surfing, :diving, :surf_base_coords
     # Custom information
     attr_accessor :state, :busy
+    # Following Pokemon sync (see 004_Other/003_VMS_FollowerSync.rb)
+    # follower holds [x, y, real_x, real_y, direction, pattern, character_name, opacity]
+    # or nil when the sender's follower isn't currently active/visible.
+    # rf_follower_event is client-local only (no PACKET_KEYS entry, never networked),
+    # same treatment as rf_event.
+    attr_accessor :follower, :rf_follower_event
+    # Overworld Encounters sync (see 004_Other/004_VMS_EncounterSync.rb)
+    # encounters holds, when this player is the authority for their current
+    # map: [[uid, x, y, direction, pattern, character_name, opacity, pokemon_hash], ...]
+    # (empty array when not authority, or authority for nothing right now).
+    # encounter_claim holds [uid, seq] the moment a player battles a synced
+    # encounter, so the actual authority can remove its real copy.
+    # rf_encounter_events is client-local only (no PACKET_KEYS entry, never
+    # networked) -- a Hash of uid => rf_event handle for that proxy.
+    attr_accessor :encounters, :encounter_claim, :rf_encounter_events
 
     def initialize(id, address, port)
       # Used to check what values can be nil
-      @can_be_nil = [:surf_base_coords, :rf_event]
+      @can_be_nil = [:surf_base_coords, :rf_event, :follower, :encounter_claim]
       # Required for connections
       @id = id
       @address = address
@@ -58,6 +73,13 @@ module VMS
       # Custom information
       @state = [:idle, nil]
       @busy = false
+      # Following Pokemon sync
+      @follower = nil
+      @rf_follower_event = nil
+      # Overworld Encounters sync
+      @encounters = []
+      @encounter_claim = nil
+      @rf_encounter_events = {}
     end
 
     def update(data)

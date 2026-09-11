@@ -72,6 +72,8 @@ module VMS
   ALREADY_INTERACTING_MESSAGE = _INTL("{1} is already interacting with someone else.")
   # Message displayed when the other player is busy. {1} is the name of the other player.
   INTERACTION_BUSY_MESSAGE = _INTL("{1} is currently busy.")
+  # Tag appended to a player's name tag while they are busy.
+  INTERACTION_BUSY_TAG = _INTL("(Busy)")
   # Message displayed when a player is engaged in a battle. {1} is the name of the other player.
   IN_A_BATTLE_MESSAGE = _INTL("{1} is currently in a battle.")
   # Message displayed when a player is engaged in a trade. {1} is the name of the other player.
@@ -98,6 +100,30 @@ module VMS
   TRADE_CONFIRMATION_MESSAGE = _INTL("Are you sure you want to trade {1} for {2}?")
   # Message displayed when waiting for the other player to accept a trade. {1} is the name of the player waiting.
   TRADE_WAIT_ACCEPT_MESSAGE = _INTL("Waiting for {1} to accept.")
+
+  # ===========
+  # Gifting
+  # ===========
+  # Message displayed when a player is engaged in a gift exchange. {1} is the name of the other player.
+  IN_A_GIFT_MESSAGE = _INTL("{1} is currently exchanging a gift.")
+  # Message displayed when choosing what type of gift to give.
+  GIFT_TYPE_CHOICE = _INTL("What would you like to gift?")
+  # Message displayed when choosing how many of an item to gift. {1} is the name of the item.
+  GIFT_ITEM_QUANTITY_MESSAGE = _INTL("How many {1} would you like to give?")
+  # Message displayed when choosing how much money to gift.
+  GIFT_MONEY_AMOUNT_MESSAGE = _INTL("How much money would you like to give?")
+  # Message displayed when the player has no money to gift.
+  NO_GIFTABLE_MONEY_MESSAGE = _INTL("You don't have any money to give.")
+  # Message displayed when the other player offers a gift. {1} is the name of the other player, {2} is a description of the gift.
+  GIFT_OFFER_MESSAGE = _INTL("{1} wants to give you {2}. Accept?")
+  # Message displayed when the receiving player's Bag is full.
+  GIFT_BAG_FULL_MESSAGE = _INTL("Your Bag doesn't have room for that.")
+  # Message displayed when the sending player no longer has enough of what they offered to give.
+  GIFT_INSUFFICIENT_MESSAGE = _INTL("You no longer have enough to give.")
+  # Message displayed to the sender when a gift is successfully given. {1} is a description of the gift, {2} is the name of the recipient.
+  GIFT_SENT_MESSAGE = _INTL("You gave {1} to {2}.\\wtnp[30]")
+  # Message displayed to the recipient when a gift is successfully received. {1} is a description of the gift, {2} is the name of the sender.
+  GIFT_RECEIVED_MESSAGE = _INTL("You received {1} from {2}!\\wtnp[30]")
 
   # ===========
   # Swap

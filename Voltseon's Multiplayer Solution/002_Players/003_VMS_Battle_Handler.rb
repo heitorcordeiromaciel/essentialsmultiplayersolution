@@ -1,5 +1,6 @@
 module VMS
   def self.start_battle(player, type = :single, size = 6, seed = nil)
+    old_party = $player.party
     begin
       # In start_battle
       if seed.nil?
@@ -22,18 +23,58 @@ module VMS
       new_party = nil
       # Always show selection screen for ordering, unless party is empty (which shouldn't happen)
       if $player.party.length > 0
-        ruleset = PokemonRuleSet.new
-        if size.nil?
-          ruleset.setNumberRange(1, 6)
+        if VMS::ENABLE_TOURNAMENT_SELECTION && size && defined?(TournamentSelection)
+          VMS.ensure_tournament_selection_installed
+          # z=99997, below TournamentSelection's own content viewport (z=99998,
+          # tournament_selection.rb:104-105) -- pbFadeOutIn's overlay defaults
+          # to z=99999 and stays fully opaque for the whole yielded block, not
+          # just during the transition itself. RGSS breaks equal-z ties by
+          # creation order (newer on top), which is why the vanilla
+          # PokemonParty_Scene path below works unmodified -- its own
+          # viewport is ALSO z=99999 but created later, inside the block, so
+          # it draws over the fade overlay. TournamentSelection's viewport is
+          # one z-level BELOW the overlay's default, so no creation-order
+          # tie-break ever applies -- it stayed strictly hidden underneath
+          # for the entire session, which is what looked like a permanent
+          # black screen.
+          pbFadeOutIn(99997) {
+            TournamentSelection.new(size, player.trainer_type, "#{VMS::VMS_PREVIEW_PREFIX}#{player.id}", 0, true, false)
+          }
+          new_party = $player.party.dup
+          # Tournament Selection mutates $player.party in place and stashes
+          # the remainder + a flag for ITS OWN pbEndOfBattle/skip_battle
+          # restoration hooks -- VMS already owns a full independent
+          # save/restore via old_party (see below), so undo the mutation and
+          # clear those flags immediately to prevent double-restoration
+          # after the battle ends.
+          $player.party = old_party
+          $PokemonGlobal.notSelectedParty = nil
+          $PokemonGlobal.tournamentSelection = false
+          # Tournament Selection's own confirm gate (tournament_selection.rb
+          # :603) allows finishing with FEWER than poke_max if the trainer
+          # owns fewer Pokemon than that -- unlike the vanilla screen below,
+          # whose ruleset.setNumber(size) strictly enforces an exact count.
+          # A short party is harmless for singles (@sideSizes only ever
+          # needs 1), but for a double battle (@sideSizes needs 2 per side,
+          # set purely from `type` in TrainerBattle.start_core_VMS,
+          # independent of party length) an asymmetric short side is
+          # exactly the kind of mismatch that manifests as a desync.
+          # Treat it the same as a cancelled/invalid vanilla selection.
+          new_party = nil if new_party.length < size
         else
-          ruleset.setNumber(size)
+          ruleset = PokemonRuleSet.new
+          if size.nil?
+            ruleset.setNumberRange(1, 6)
+          else
+            ruleset.setNumber(size)
+          end
+          ruleset.addPokemonRule(AblePokemonRestriction.new)
+          pbFadeOutIn {
+            scene = PokemonParty_Scene.new
+            screen = PokemonPartyScreen.new(scene, $player.party)
+            new_party = screen.pbPokemonMultipleEntryScreenEx(ruleset)
+          }
         end
-        ruleset.addPokemonRule(AblePokemonRestriction.new)
-        pbFadeOutIn {
-          scene = PokemonParty_Scene.new
-          screen = PokemonPartyScreen.new(scene, $player.party)
-          new_party = screen.pbPokemonMultipleEntryScreenEx(ruleset)
-        }
         if !new_party
           $game_temp.vms[:state] = [:idle, nil]
           return
@@ -56,7 +97,6 @@ module VMS
         return
       end
 
-      old_party = $player.party
       $player.party = new_party if new_party
 
       trainer = NPCTrainer.new(player.name, player.trainer_type, 0)

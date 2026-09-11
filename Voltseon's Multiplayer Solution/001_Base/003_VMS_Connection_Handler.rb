@@ -130,6 +130,8 @@ module VMS
         return if player.nil?
         VMS.log("Player #{player.name} (#{id}) has disconnected from the server")
         Rf.delete_event(player.rf_event) if VMS.event_deletion_possible?(player)
+        VMS.delete_follower_event(player) if VMS::ENABLE_FOLLOWER_SYNC
+        VMS.clear_encounter_proxies(player) if VMS::ENABLE_OVERWORLD_ENCOUNTER_SYNC
         $game_temp.vms[:players].delete(id)
         return
       end
@@ -213,6 +215,8 @@ module VMS
     VMS.get_players.each do |player|
       next unless VMS.event_deletion_possible?(player)
       Rf.delete_event(player.rf_event)
+      VMS.delete_follower_event(player) if VMS::ENABLE_FOLLOWER_SYNC
+      VMS.clear_encounter_proxies(player) if VMS::ENABLE_OVERWORLD_ENCOUNTER_SYNC
       player.rf_event = nil
     end
   end

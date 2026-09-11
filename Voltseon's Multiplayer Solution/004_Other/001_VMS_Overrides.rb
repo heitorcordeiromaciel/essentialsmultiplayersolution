@@ -47,13 +47,15 @@ module Graphics
 end
 
 class AnimationSprite < RPG::Sprite
-  alias vms_initialize initialize unless private_method_defined?(:vms_initialize)
   def initialize(animID, map, tileX, tileY, viewport = nil, tinting = false, height = 3, owner = true)
-    @owner = owner
-    @animID = animID
+    @owner   = owner
+    @animID  = animID
+    @map     = map
+    @tileX   = tileX
+    @tileY   = tileY
     @tinting = tinting
-    @height = height
-    vms_initialize(animID, map, tileX, tileY, viewport, tinting, height)
+    @height  = height
+    super(viewport)
   end
 
   def owner;        return @owner;         end
@@ -284,6 +286,7 @@ class Sprite_NameTag
       return
     end
     name = player.name.to_s
+    name += " " + VMS::INTERACTION_BUSY_TAG if player.busy
     rebuild_bitmap(name) if name != @cached_name || @sprite.nil? || @sprite.disposed?
     return unless @sprite && !@sprite.disposed?
     @sprite.x       = @parent_sprite.x

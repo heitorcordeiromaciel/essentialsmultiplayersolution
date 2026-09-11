@@ -26,6 +26,8 @@ module VMS
       VMS.message(_INTL(VMS::IN_A_BATTLE_MESSAGE, player_name))
     when :trade
       VMS.message(_INTL(VMS::IN_A_TRADE_MESSAGE, player_name))
+    when :gift
+      VMS.message(_INTL(VMS::IN_A_GIFT_MESSAGE, player_name))
     end
   end
 
@@ -105,6 +107,23 @@ module VMS
         else
           $game_temp.vms[:state] = [:idle, nil]
         end
+      when :gift
+        kind = player.state[2]
+        item = player.state[3]
+        amount = player.state[4]
+        desc = (kind == :item) ? _INTL("{1}x {2}", amount, GameData::Item.get(item).name) : _INTL("${1}", amount)
+        if pbConfirmMessage(_INTL(VMS::GIFT_OFFER_MESSAGE, player_name, desc))
+          $game_temp.vms[:state] = [:gift, player.id, kind, item, amount]
+          if !VMS.await_player_state(player, :gift, _INTL(VMS::INTERACTION_WAIT_RESPONSE_MESSAGE, player_name))
+            if player.state[1] != $player.id
+              VMS.message(_INTL(VMS::INTERACTION_CANCEL_MESSAGE, player_name))
+              return
+            end
+          end
+          VMS.start_gift(player, false, kind, item, amount)
+        else
+          $game_temp.vms[:state] = [:idle, nil]
+        end
       end
       $game_temp.vms[:state] = [:idle, nil]
     end
@@ -158,7 +177,7 @@ module VMS
     end
     # What do we do now?
     loop do
-      choice = VMS.message(VMS::INTERACTION_CHOICE, ["Swap", "Trade", "Battle", "Cancel"])
+      choice = VMS.message(VMS::INTERACTION_CHOICE, ["Swap", "Trade", "Battle", "Gift", "Cancel"])
       case choice
       when 0 # Swap
         # Set state to interact with player
@@ -248,7 +267,47 @@ module VMS
         end
         VMS.start_battle(player, type, size, battle_seed)
         break
-      when 3 # Cancel
+      when 3 # Gift
+        gift_choice = VMS.message(VMS::GIFT_TYPE_CHOICE, [_INTL("Item"), _INTL("Money"), _INTL("Cancel")])
+        case gift_choice
+        when 0 # Item
+          item = pbChooseItem
+          next if item.nil? || item == :NONE
+          next if $bag.quantity(item) <= 0
+          params = ChooseNumberParams.new
+          params.setRange(1, $bag.quantity(item))
+          params.setDefaultValue(1)
+          params.setCancelValue(0)
+          amount = pbMessageChooseNumber(_INTL(VMS::GIFT_ITEM_QUANTITY_MESSAGE, GameData::Item.get(item).name), params)
+          next if amount <= 0
+          kind = :item
+        when 1 # Money
+          if $player.money <= 0
+            VMS.message(VMS::NO_GIFTABLE_MONEY_MESSAGE)
+            next
+          end
+          params = ChooseNumberParams.new
+          params.setRange(1, $player.money)
+          params.setDefaultValue(1)
+          params.setCancelValue(0)
+          amount = pbMessageChooseNumber(VMS::GIFT_MONEY_AMOUNT_MESSAGE, params)
+          next if amount <= 0
+          kind = :money
+          item = nil
+        else
+          next
+        end
+        # Set state to gift with player
+        $game_temp.vms[:state] = [:gift, id, kind, item, amount]
+        if !VMS.await_player_state(player, :gift, _INTL(VMS::INTERACTION_WAIT_RESPONSE_MESSAGE, player_name))
+          if player.state[1] != $player.id
+            VMS.message(_INTL(VMS::INTERACTION_CANCEL_MESSAGE, player_name))
+            return
+          end
+        end
+        VMS.start_gift(player, true, kind, item, amount)
+        break
+      when 4 # Cancel
         # Set state to idle
         $game_temp.vms[:state] = [:idle, nil]
         break
@@ -292,6 +351,8 @@ module VMS
       if $game_temp.vms[same_timer] > (VMS::TIMEOUT_SECONDS / 5)
         VMS.log("Player #{player.name} (#{player.id}) timed out.")
         Rf.delete_event(player.rf_event) if VMS.event_deletion_possible?(player)
+        VMS.delete_follower_event(player) if VMS::ENABLE_FOLLOWER_SYNC
+        VMS.clear_encounter_proxies(player) if VMS::ENABLE_OVERWORLD_ENCOUNTER_SYNC
         $game_temp.vms[:players].delete(player.id)
       end
       $game_temp.vms[same_timer] += Graphics.delta

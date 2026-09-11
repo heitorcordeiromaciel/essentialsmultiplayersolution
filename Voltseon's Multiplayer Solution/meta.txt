@@ -1,8 +1,11 @@
 Name       = Voltseon's Multiplayer Solution
-Version    = 2.3.0
+Version    = 2.4.0
 Requires   = rainefallUtils
 Optional   = [DBK] Z-Power
 Optional   = [DBK] Dynamax
 Optional   = [DBK] Terastallization
+Optional   = Following Pokemon EX
+Optional   = Voltseon's Overworld Encounters
 Essentials = 21.1
+Website    = https://eeveeexpo.com/resources/1453/
 Credits    = Voltseon, ThankfulHyena170
