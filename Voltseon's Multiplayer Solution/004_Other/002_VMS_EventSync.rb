@@ -100,7 +100,7 @@ module VMS
     end
   end
 
-  # Sets a regular (non-self) Game Switch and relays it to every other
+  # Sets a Game Switch and relays it to every other
   # connected client, Usage:
   #   VMS.sync_switch(42, true)
   def self.sync_switch(number, value)
@@ -109,7 +109,7 @@ module VMS
     VMS.set_variable("vmssync_gs_#{number}", value) if VMS.is_connected?
   end
 
-  # Sets a regular Game Variable and relays it to every other connected client, Usage:
+  # Sets a Game Variable and relays it to every other connected client, Usage:
   #   VMS.sync_variable(12, 5)
   #   VMS.sync_variable(13, "Hello")
   def self.sync_variable(number, value)

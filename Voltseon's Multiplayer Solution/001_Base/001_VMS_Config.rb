@@ -119,8 +119,7 @@ module VMS
   ENABLE_OVERWORLD_ENCOUNTER_SYNC = false
   # Enable Tournament Selection support for single/double PvP battles?
   # Requires the "Tournament Selection" plugin.
-  # WARNING: This feature is Experimental, might cause battle desyncs.
-  ENABLE_TOURNAMENT_SELECTION = true
+  ENABLE_TOURNAMENT_SELECTION = false
 
   # ===========
   # Methods

@@ -42,17 +42,6 @@ module VMS
     return rf_event
   end
 
-  # Mirrors VMS.event_deletion_possible? (003_User_Functions/001_VMS_User_Functions.rb)
-  # but scoped entirely to the follower's OWN event -- deliberately never
-  # reads player.rf_event. Reusing event_deletion_possible? here was a bug:
-  # it starts with `return false if player.rf_event.nil?`, and every path
-  # that needs to delete the follower proxy because the PLAYER proxy is
-  # already gone (map no longer connected, etc.) runs exactly when
-  # player.rf_event has already been nulled a few lines earlier in
-  # VMS.process, the same tick, before handle_player/handle_follower ever
-  # runs. That made the guard always fail in precisely the case it needed to
-  # pass, so Rf.delete_event never ran -- yet rf_follower_event was still
-  # set to nil right after regardless, leaking the orphaned event/sprite.
   def self.follower_event_deletion_possible?(player)
     return false if player.rf_follower_event.nil?
     return false unless $scene.is_a?(Scene_Map)

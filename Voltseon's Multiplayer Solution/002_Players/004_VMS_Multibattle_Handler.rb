@@ -1,41 +1,4 @@
-##############################################################################
-# VMS Multibattle Handler
-# ----------------------------------------------------------------------------
-# Implements 4-player 2v2 multibattles.
-# Two teams of two players each select 3 Pokémon. Each player controls
-# exactly one battler in a standard double battle.
-#
-# Battle layout (local indices — same for all clients):
-#   Battler 0 = self (always)
-#   Battler 2 = ally
-#   Battler 1 = opponent A
-#   Battler 3 = opponent B
-#
-# Global battler index canonical mapping:
-#   [team=0, slot=0] → global 0
-#   [team=0, slot=1] → global 2
-#   [team=1, slot=0] → global 1
-#   [team=1, slot=1] → global 3
-#
-# ALL multibattle state values have this fixed layout:
-#   state[0] = state symbol
-#   state[1] = lobby_id
-#   state[2] = team_idx  (0 or 1)
-#   state[3] = slot_idx  (0 or 1)
-#   state[4..] = state-specific payload
-#
-# State values:
-#   [:multibattle_lobby,     lobby_id, team, slot]
-#   [:multibattle_ready,     lobby_id, team, slot]
-#   [:multibattle_selection, lobby_id, team, slot, party_or_nil]
-#   [:multibattle_command,   lobby_id, team, slot, turn_count, pick, mega, z, dyna, tera]
-#   [:multibattle_switch,    lobby_id, team, slot, global_battler_idx, new_party_index]
-##############################################################################
-
 module VMS
-  # -------------------------------------------------------------------------
-  # Fixed canonical mappings (never change at runtime)
-  # -------------------------------------------------------------------------
   GLOBAL_BATTLER_OWNER = { [0,0]=>0, [0,1]=>2, [1,0]=>1, [1,1]=>3 }
   SLOT_FOR_GLOBAL      = GLOBAL_BATTLER_OWNER.invert   # {0=>[0,0], 2=>[0,1], 1=>[1,0], 3=>[1,1]}
 

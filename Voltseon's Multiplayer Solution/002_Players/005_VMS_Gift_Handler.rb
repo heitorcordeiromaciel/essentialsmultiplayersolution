@@ -1,10 +1,6 @@
 module VMS
-  # Usage: VMS.start_gift(player #<VMS::Player>, is_sender #<Boolean>, kind #<Symbol>, item #<Symbol, nil>, amount #<Integer>)
-  # (completes a gift exchange with the specified player; called symmetrically
-  # on both clients once the :gift state has been mirrored)
   def self.start_gift(player, is_sender, kind, item, amount)
     begin
-      # Check if the player is connected to the server.
       if !VMS.is_connected?
         VMS.message(VMS::NOT_CONNECTED_MESSAGE)
         $game_temp.vms[:state] = [:idle, nil]
@@ -12,8 +8,6 @@ module VMS
       end
       desc = (kind == :item) ? _INTL("{1}x {2}", amount, GameData::Item.get(item).name) : _INTL("${1}", amount)
       if is_sender
-        # Re-check: the handshake took real time, so re-validate we still
-        # have enough to give rather than trusting the value picked earlier.
         if kind == :item
           if $bag.quantity(item) < amount
             VMS.message(VMS::GIFT_INSUFFICIENT_MESSAGE)
