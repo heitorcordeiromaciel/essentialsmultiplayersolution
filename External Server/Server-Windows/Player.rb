@@ -14,7 +14,8 @@ module VMS
     animation: 14, offset_x: 15, offset_y: 16, opacity: 17, stop_animation: 18,
     rf_event: 19, jump_offset: 20, jumping_on_spot: 21, surfing: 22, diving: 23,
     surf_base_coords: 24, state: 25, busy: 26, cluster_id: 27,
-    online_variables: 28, game_name: 29, game_version: 30
+    online_variables: 28, game_name: 29, game_version: 30, follower: 31,
+    encounters: 32, encounter_claim: 33
   }
   REVERSE_KEYS = PACKET_KEYS.invert
 
