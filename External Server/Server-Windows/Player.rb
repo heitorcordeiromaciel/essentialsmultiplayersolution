@@ -1,13 +1,5 @@
-##############################################################################
-# VMS Player
-# ----------------------------------------------------------------------------
-# This class is used to store information about a player.
-# Make sure to update the same script in the server/plugin when making changes.
-# ----------------------------------------------------------------------------
-##############################################################################
 
 module VMS
-  # Mapping for integer-keyed serialization to reduce bandwidth
   PACKET_KEYS = {
     id: 1, heartbeat: 2, name: 3, map_id: 4, x: 5, y: 6, real_x: 7, real_y: 8,
     trainer_type: 9, direction: 10, pattern: 11, graphic: 12, party: 13,
@@ -20,8 +12,8 @@ module VMS
   REVERSE_KEYS = PACKET_KEYS.invert
 
   class Player
-    attr_reader :id, :address, :port, :heartbeat
-    attr_accessor :socket, :dirty, :name
+    attr_reader :id, :address, :port, :heartbeat, :dirty
+    attr_accessor :socket, :name
 
     def initialize(id, address, port)
       @id = id
@@ -30,6 +22,7 @@ module VMS
       @heartbeat = Time.now
       @dirty = true
       @data = {}
+      @dirty_fields = {}
     end
 
     def update(data)
@@ -41,15 +34,28 @@ module VMS
 
       data.each do |k, v|
         next if k == hb_key
+        next if @data.key?(k) && @data[k] == v
         @data[k] = v
+        @dirty_fields[k] = true
       end
       @name = data[PACKET_KEYS[:name]] if data[PACKET_KEYS[:name]]
-      @dirty = true
+      @dirty = true unless @dirty_fields.empty?
+    end
+
+    def dirty=(value)
+      @dirty = value
+      @dirty_fields.clear unless value
     end
 
     def to_hash(full = true)
       hash = { PACKET_KEYS[:id] => @id, PACKET_KEYS[:heartbeat] => @heartbeat }
       return hash unless full
+      @dirty_fields.each_key { |k| hash[k] = @data[k] }
+      hash
+    end
+
+    def full_hash
+      hash = { PACKET_KEYS[:id] => @id, PACKET_KEYS[:heartbeat] => @heartbeat }
       hash.merge!(@data)
       hash
     end

@@ -42,32 +42,23 @@ module VMS
     return rf_event
   end
 
-  def self.follower_event_deletion_possible?(player)
-    return false if player.rf_follower_event.nil?
-    return false unless $scene.is_a?(Scene_Map)
-    event_map_id = player.rf_follower_event[:event].map_id
-    return false unless $map_factory.areConnected?(event_map_id, $game_map.map_id)
-    return false if $scene.spriteset(event_map_id).nil?
-    return true
-  end
-
   def self.delete_follower_event(player)
     return unless player.rf_follower_event
-    Rf.delete_event(player.rf_follower_event) if VMS.follower_event_deletion_possible?(player)
+    VMS.force_delete_event(player.rf_follower_event)
     player.rf_follower_event = nil
   end
 
   def self.handle_follower(player)
     if player.rf_event.nil?
       if player.rf_follower_event
-        Rf.delete_event(player.rf_follower_event) if VMS.follower_event_deletion_possible?(player)
+        VMS.force_delete_event(player.rf_follower_event)
         player.rf_follower_event = nil
       end
       return
     end
     if player.follower.nil?
       if player.rf_follower_event
-        Rf.delete_event(player.rf_follower_event) if VMS.follower_event_deletion_possible?(player)
+        VMS.force_delete_event(player.rf_follower_event)
         player.rf_follower_event = nil
       end
       return
@@ -76,7 +67,7 @@ module VMS
     if player.rf_follower_event.nil? || player.rf_follower_event[:event].erased? ||
        player.rf_follower_event[:event].map_id != player.map_id
       if player.rf_follower_event
-        Rf.delete_event(player.rf_follower_event) if VMS.follower_event_deletion_possible?(player)
+        VMS.force_delete_event(player.rf_follower_event)
         player.rf_follower_event = nil
       end
       return unless $map_factory.areConnected?(player.map_id, $game_map.map_id)

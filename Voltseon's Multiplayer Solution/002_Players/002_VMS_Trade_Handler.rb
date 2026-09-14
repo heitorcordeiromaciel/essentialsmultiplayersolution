@@ -1,50 +1,39 @@
 module VMS
-  # Usage: VMS.start_trade(player #<VMS::Player>) (starts a trade with the specified player)
   def self.start_trade(player)
     begin
-      # Get player name
       player_name = player.name
-      # Check if the player is connected to the server.
       if !VMS.is_connected?
         VMS.message(VMS::NOT_CONNECTED_MESSAGE)
         $game_temp.vms[:state] = [:idle, nil]
         return
       end
-      # Check if the player has any tradable Pokémon.
       if $player.able_pokemon_trade_count == 0
         VMS.message(VMS::NO_TRADABLE_MESSAGE)
         $game_temp.vms[:state] = [:idle, nil]
         return
       end
-      # Check if the other player has any tradable Pokémon.
       party = VMS.update_party(player)
       if party.count { |pkmn| !pkmn.egg? && !pkmn.shadowPokemon? } == 0
         VMS.message(_INTL(VMS::OTHER_NO_TRADABLE_MESSAGE, player.name))
         $game_temp.vms[:state] = [:idle, nil]
         return
       end
-      # Start trade
       pbChoosePokemon(1, 3, proc { |pkmn| !pkmn.egg? && !pkmn.shadowPokemon? })
-      # Store variables
       pokemon_index = $game_variables[1]
       pokemon_name = $game_variables[3]
-      # Check if the player selected a Pokémon.
       if pokemon_index == -1
         $game_temp.vms[:state] = [:idle, nil]
         return
       end
       $game_temp.vms[:state] = [:trade_confirm, player.id, pokemon_index, pokemon_name]
-      # Wait for the other player to select a Pokémon.
       if !VMS.await_player_state(player, :trade_confirm, _INTL(VMS::TRADE_WAIT_CONFIRM_MESSAGE, player_name), true, true)
         VMS.message(_INTL(VMS::TRADE_CANCEL_MESSAGE, player.name))
         $game_temp.vms[:state] = [:idle, nil]
         return
       end
-      # Store variables
       party = VMS.update_party(player)
       trade_pokemon_index = player.state[2]
       trade_pokemon_name = player.state[3]
-      # Check if the other player selected a Pokémon.
       if trade_pokemon_index == -1 || trade_pokemon_index >= party.length
         VMS.message(_INTL(VMS::TRADE_CANCEL_MESSAGE, player.name))
         $game_temp.vms[:state] = [:idle, nil]

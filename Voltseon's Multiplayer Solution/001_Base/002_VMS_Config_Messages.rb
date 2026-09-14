@@ -183,4 +183,111 @@ module VMS
   MB_READY_CONFIRM_MESSAGE = _INTL("Ready to battle?")
   # Shown when a player has no eligible Pokémon for the multibattle.
   MB_NO_ELIGIBLE_POKEMON = _INTL("You don't have enough able Pokémon to participate.")
+
+  # ===========
+  # Matchmaking
+  # ===========
+  # Shown when trying to use matchmaking while not connected.
+  MM_NOT_CONNECTED_MESSAGE = _INTL("You must be connected to a server to use matchmaking.")
+  # Shown while searching for a battle matchmaking opponent.
+  MM_QUEUE_WAIT_MESSAGE = _INTL("Searching for an opponent...")
+  # Shown while searching for a trade matchmaking partner.
+  MM_TRADE_QUEUE_WAIT_MESSAGE = _INTL("Searching for a trade partner...")
+  # Shown when the matchmaking queue times out without finding a match.
+  MM_QUEUE_TIMEOUT_MESSAGE = _INTL("No match was found in time.")
+  # Shown when the player cancels matchmaking manually.
+  MM_QUEUE_CANCELLED_MESSAGE = _INTL("Left the matchmaking queue.")
+  # Shown once a match is found and mutually confirmed. {1} is the opponent/partner's name.
+  MM_MATCH_FOUND_MESSAGE = _INTL("Match found with {1}!")
+
+  # ===========
+  # Chat
+  # ===========
+  # Prompt shown in the text-entry box when composing a chat message.
+  CHAT_INPUT_PROMPT = _INTL("Enter chat message:")
+
+  # ===========
+  # GTS
+  # ===========
+  # Shown when trying to use the GTS while not connected.
+  GTS_NOT_CONNECTED_MESSAGE = _INTL("You must be connected to a server to use the GTS.")
+  # Shown when the GTS is disabled, or its listings file failed to load
+  # server-side (so all GTS operations are being refused).
+  GTS_UNAVAILABLE_MESSAGE = _INTL("The GTS is currently unavailable.")
+  # Title/prompt shown for the main GTS menu.
+  GTS_MENU_TITLE = _INTL("Welcome to the GTS! What would you like to do?")
+  # Main GTS menu option labels.
+  GTS_MENU_BROWSE = _INTL("Browse Listings")
+  GTS_MENU_LIST_POKEMON = _INTL("List a Pokémon")
+  GTS_MENU_LIST_ITEM = _INTL("List an Item")
+  GTS_MENU_MY_LISTINGS = _INTL("My Listings & Collect Payment")
+  # Shown above the browse list.
+  GTS_BROWSE_TITLE = _INTL("Select a listing to view, or Cancel to go back:")
+  # Shown when there are no active listings to browse.
+  GTS_BROWSE_EMPTY_MESSAGE = _INTL("There are no active GTS listings right now.")
+  # Shown for a single listing's details, alongside the View Summary/
+  # Claim-or-Take-Back/Back choice menu. {1} is the summary, {2} is the
+  # seller's name, {3} is the price.
+  GTS_LISTING_DETAILS_MESSAGE = _INTL("{1}\\nSeller: {2}\\nPrice: ${3}", "{1}", "{2}", "{3}")
+  # Listing-details menu option labels.
+  GTS_MENU_VIEW_SUMMARY = _INTL("View Pokémon Summary")
+  GTS_MENU_TAKE_BACK = _INTL("Take Back")
+  GTS_MENU_CLAIM = _INTL("Claim")
+  # Shown to confirm claiming someone else's listing. {1} is the summary,
+  # {2} is the price.
+  GTS_CLAIM_CONFIRM_MESSAGE = _INTL("Claim {1} for ${2}?", "{1}", "{2}")
+  # Shown when choosing which Pokémon to list.
+  GTS_CHOOSE_POKEMON_MESSAGE = _INTL("Choose a Pokémon to list on the GTS.")
+  # Shown when the player has no listable Pokémon (would empty their party).
+  GTS_NO_LISTABLE_POKEMON_MESSAGE = _INTL("You don't have another able Pokémon to leave in your party.")
+  # Shown when choosing which item to list.
+  GTS_CHOOSE_ITEM_MESSAGE = _INTL("Choose an item to list on the GTS.")
+  # Shown when the player has no listable items.
+  GTS_NO_LISTABLE_ITEMS_MESSAGE = _INTL("You don't have any items to list.")
+  # Shown when choosing how many of an item to list. {1} is the item's name.
+  GTS_ITEM_QUANTITY_MESSAGE = _INTL("How many {1} would you like to list?")
+  # Shown when choosing a price for a new listing.
+  GTS_PRICE_MESSAGE = _INTL("How much should this listing cost?")
+  # Shown to confirm a new listing before it's sent to the server. {1} is
+  # the summary, {2} is the price.
+  GTS_CONFIRM_LISTING_MESSAGE = _INTL("List {1} for ${2}?", "{1}", "{2}")
+  # Shown when a listing is created successfully.
+  GTS_CREATE_SUCCESS_MESSAGE = _INTL("Your listing was posted to the GTS.")
+  # Shown when a listing fails to be created. {1} is the server's reason.
+  GTS_CREATE_FAILURE_MESSAGE = _INTL("Your listing could not be posted: {1}")
+  # Shown when the player has reached the maximum number of active listings.
+  GTS_MAX_LISTINGS_MESSAGE = _INTL("You have reached the maximum number of active GTS listings.")
+  # Shown when a listing is claimed successfully.
+  GTS_CLAIM_SUCCESS_MESSAGE = _INTL("You claimed the listing!")
+  # Shown when a claim fails because someone else claimed it first.
+  GTS_CLAIM_UNAVAILABLE_MESSAGE = _INTL("That listing is no longer available -- someone else may have already claimed it.")
+  # Shown when a claim fails for another reason. {1} is the server's reason.
+  GTS_CLAIM_FAILURE_MESSAGE = _INTL("That listing could not be claimed: {1}")
+  # Shown when the player can't afford the listing they're trying to claim.
+  GTS_CANT_AFFORD_MESSAGE = _INTL("You don't have enough money for that.")
+  # Shown when the player's Bag has no room for a claimed item.
+  GTS_BAG_FULL_MESSAGE = _INTL("Your Bag doesn't have room for that.")
+  # Shown when the player's party is full and can't receive a claimed/
+  # cancelled Pokémon.
+  GTS_PARTY_FULL_MESSAGE = _INTL("Your party is full.")
+  # Title shown above the "My Listings" browser.
+  GTS_MY_LISTINGS_TITLE = _INTL("Select one of your listings:")
+  # Shown when the player has no listings of their own.
+  GTS_MY_LISTINGS_EMPTY_MESSAGE = _INTL("You don't have any GTS listings.")
+  # Status labels shown next to each of the player's own listings.
+  GTS_STATUS_ACTIVE = _INTL("Active")
+  GTS_STATUS_SOLD = _INTL("Sold -- payment ready to collect")
+  GTS_STATUS_COLLECTED = _INTL("Collected")
+  # Shown for one of the player's own active listings, asking to cancel it.
+  GTS_CANCEL_CONFIRM_MESSAGE = _INTL("Cancel this listing and take {1} back?", "{1}")
+  # Shown for one of the player's own sold listings, asking to collect payment.
+  GTS_COLLECT_CONFIRM_MESSAGE = _INTL("Collect ${1} in payment for this listing?", "{1}")
+  # Shown when payment is collected successfully. {1} is the amount.
+  GTS_COLLECT_SUCCESS_MESSAGE = _INTL("You collected ${1}.", "{1}")
+  # Shown when collecting payment fails. {1} is the server's reason.
+  GTS_COLLECT_FAILURE_MESSAGE = _INTL("Payment could not be collected: {1}")
+  # Shown when a listing is cancelled successfully.
+  GTS_CANCEL_SUCCESS_MESSAGE = _INTL("Your listing was cancelled and returned to you.")
+  # Shown when cancelling a listing fails. {1} is the server's reason.
+  GTS_CANCEL_FAILURE_MESSAGE = _INTL("That listing could not be cancelled: {1}")
 end

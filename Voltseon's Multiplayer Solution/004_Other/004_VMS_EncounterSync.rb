@@ -37,12 +37,6 @@ module VMS
     end
   end
 
-  # -------------------------------------------------------------------------
-  # Authority election
-  # -------------------------------------------------------------------------
-
-  # Uses live $game_map for self instead of the synced player mirror, which
-  # lags one round trip behind right after actually changing maps.
   def self.currently_has_real_encounters?(map_id)
     return false unless $game_map && $game_map.map_id == map_id
     $game_map.events.each_value do |event|
@@ -72,10 +66,6 @@ module VMS
     authority = VMS.encounter_authority_for_map($game_map.map_id)
     authority.nil? || authority.id == $player.id
   end
-
-  # -------------------------------------------------------------------------
-  # Authority side: broadcast current encounters
-  # -------------------------------------------------------------------------
 
   def self.encounter_uid_for(map_id, event_id, pkmn)
     table = ($game_temp.vms[:voe_uids] ||= {})
@@ -213,7 +203,6 @@ module VMS
     map = $map_factory && $map_factory.getMapNoAdd(map_id)
     return unless map
     removed = 0
-    # Snapshot first -- Rf.delete_event mutates map.events (the same hash).
     map.events.values.each do |event|
       next unless event.name[/OverworldPkmn/i]
       data = event.variable
@@ -232,10 +221,6 @@ module VMS
     end
     $game_temp.vms[:voe_uids]&.delete_if { |key, _| key.is_a?(Array) && key[0] == map_id }
   end
-
-  # -------------------------------------------------------------------------
-  # Authority side: accept remote claims
-  # -------------------------------------------------------------------------
 
   def self.check_encounter_claim(player)
     claim = player.encounter_claim
@@ -261,10 +246,6 @@ module VMS
     end
   end
 
-  # -------------------------------------------------------------------------
-  # Non-authority side: render + interact with proxies
-  # -------------------------------------------------------------------------
-
   def self.create_encounter_event(map_id, uid, pkmn_hash)
     rf_event = Rf.create_event(map_id) do |event|
       event.x = 0
@@ -281,19 +262,10 @@ module VMS
     return rf_event
   end
 
-  def self.encounter_proxy_deletion_possible?(rf)
-    return false if rf.nil?
-    return false unless $scene.is_a?(Scene_Map)
-    event_map_id = rf[:event].map_id
-    return false unless $map_factory.areConnected?(event_map_id, $game_map.map_id)
-    return false if $scene.spriteset(event_map_id).nil?
-    return true
-  end
-
   def self.delete_encounter_proxy(player, uid)
     rf = player.rf_encounter_events[uid]
     return unless rf
-    Rf.delete_event(rf) if VMS.encounter_proxy_deletion_possible?(rf)
+    VMS.force_delete_event(rf)
     player.rf_encounter_events.delete(uid)
     $game_temp.vms[:voe_proxy_data]&.delete(uid)
     $game_temp.vms[:voe_proxy_motion]&.delete(uid)
@@ -444,10 +416,6 @@ module VMS
     end
     pbGenerateOverworldEncounters
   end
-
-  # -------------------------------------------------------------------------
-  # Non-authority side: suppress local spawning
-  # -------------------------------------------------------------------------
 
   def self.ensure_voe_override_installed
     return if @voe_override_installed
