@@ -27,7 +27,8 @@ module VMS
     log = $game_temp.vms[:chat_log]
     log.push([name, text])
     log.shift while log.length > VMS::CHAT_LOG_MAX_MESSAGES
-    $game_temp.vms[:chat_dirty] = true
+    $game_temp.vms[:chat_dirty]         = true
+    $game_temp.vms[:chat_last_activity] = Time.now
   end
 
   CHAT_FONT_SIZE   = 16
@@ -40,6 +41,30 @@ module VMS
       return
     end
     VMS.rebuild_chat_overlay if @chat_overlay_sprite.nil? || @chat_overlay_sprite.disposed? || $game_temp.vms[:chat_dirty]
+    VMS.update_chat_fade
+  end
+
+  # Fades the overlay out after VMS::CHAT_FADE_DELAY seconds of no new
+  # messages, over VMS::CHAT_FADE_DURATION seconds. A new message resets
+  # chat_last_activity (see append_chat_message) and rebuilds the sprite
+  # from scratch, which is always full opacity -- so it pops back
+  # instantly rather than fading back in.
+  def self.update_chat_fade
+    return unless @chat_overlay_sprite && !@chat_overlay_sprite.disposed?
+    return if VMS::CHAT_FADE_DELAY <= 0
+    last_activity = $game_temp.vms[:chat_last_activity]
+    if last_activity.nil?
+      @chat_overlay_sprite.opacity = 255
+      return
+    end
+    elapsed = Time.now - last_activity
+    if elapsed <= VMS::CHAT_FADE_DELAY
+      @chat_overlay_sprite.opacity = 255
+    else
+      fade_elapsed = elapsed - VMS::CHAT_FADE_DELAY
+      progress = VMS::CHAT_FADE_DURATION > 0 ? (fade_elapsed / VMS::CHAT_FADE_DURATION) : 1.0
+      @chat_overlay_sprite.opacity = (255 * (1.0 - [progress, 1.0].min)).round
+    end
   end
 
   def self.wrap_chat_line(bmp, text, max_width)

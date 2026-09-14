@@ -164,6 +164,11 @@ module VMS
   end
   # The name of the Toggle Chat option in the pause menu
   CHAT_TOGGLE_MENU_NAME = "Toggle Chat"
+  # Seconds of no new messages before the chat overlay starts fading out.
+  # Set to 0 to disable fading
+  CHAT_FADE_DELAY = 10
+  # Seconds the fade-out itself takes once it starts.
+  CHAT_FADE_DURATION = 1.0
 
   # ===========
   # GTS

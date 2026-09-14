@@ -28,7 +28,8 @@ class Game_Temp
       chat_log: [],
       chat_hidden: false,
       chat_dirty: false,
-      chat_input_open: false
+      chat_input_open: false,
+      chat_last_activity: nil
     }
   end
 end
