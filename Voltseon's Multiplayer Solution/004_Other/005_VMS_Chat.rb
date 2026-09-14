@@ -44,11 +44,6 @@ module VMS
     VMS.update_chat_fade
   end
 
-  # Fades the overlay out after VMS::CHAT_FADE_DELAY seconds of no new
-  # messages, over VMS::CHAT_FADE_DURATION seconds. A new message resets
-  # chat_last_activity (see append_chat_message) and rebuilds the sprite
-  # from scratch, which is always full opacity -- so it pops back
-  # instantly rather than fading back in.
   def self.update_chat_fade
     return unless @chat_overlay_sprite && !@chat_overlay_sprite.disposed?
     return if VMS::CHAT_FADE_DELAY <= 0
