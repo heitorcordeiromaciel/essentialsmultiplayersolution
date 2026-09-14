@@ -377,8 +377,8 @@ module VMS
       next if anim == 0
       next unless anim[1] == $game_map.map_id
       next unless VMS::SYNC_ANIMATIONS.include?(anim[0])
-      next if $scene.spriteset.animationExists?(anim[0], anim[2], anim[3], anim[4], anim[5])
-      $scene.spriteset.addUserAnimation(anim[0], anim[2], anim[3], anim[4], anim[5], false)
+      next if $scene.spriteset.vms_animation_exists?(anim[0], anim[2], anim[3], anim[4], anim[5])
+      $scene.spriteset.vms_add_user_animation(anim[0], anim[2], anim[3], anim[4], anim[5], false)
     end
   end
 

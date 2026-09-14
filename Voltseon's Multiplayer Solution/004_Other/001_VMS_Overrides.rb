@@ -117,13 +117,13 @@ class Interpreter
 end
 
 class Spriteset_Map
-  def addUserAnimation(animID, x, y, tinting = false, height = 3, owner = true)
+  def vms_add_user_animation(animID, x, y, tinting = false, height = 3, owner = true)
     sprite = AnimationSprite.new(animID, self.map, x, y, @@viewport1, tinting, height, owner)
     addUserSprite(sprite)
     return sprite
   end
 
-  def getAnimationSprites
+  def vms_get_animation_sprites
     anim_sprites = []
     @usersprites.each do |sprite|
       next if sprite.nil? || sprite.disposed? || !sprite.is_a?(AnimationSprite)
@@ -133,13 +133,17 @@ class Spriteset_Map
     return anim_sprites
   end
 
-  def animationExists?(animID, tileX, tileY, tinting, height)
+  def vms_animation_exists?(animID, tileX, tileY, tinting, height)
     @usersprites.each do |sprite|
       next if sprite.nil? || sprite.disposed? || !sprite.is_a?(AnimationSprite)
       return true if sprite.animID == animID && sprite.tileX == tileX && sprite.tileY == tileY && sprite.tinting == tinting && sprite.height == height
     end
     return false
   end
+
+  alias_method :addUserAnimation, :vms_add_user_animation unless method_defined?(:addUserAnimation)
+  alias_method :getAnimationSprites, :vms_get_animation_sprites unless method_defined?(:getAnimationSprites)
+  alias_method :animationExists?, :vms_animation_exists? unless method_defined?(:animationExists?)
 end
 
 class Game_Character

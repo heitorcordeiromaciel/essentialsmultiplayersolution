@@ -275,7 +275,7 @@ module VMS
     data[VMS::PACKET_KEYS[:offset_y]]         = $game_player.y_offset
     data[VMS::PACKET_KEYS[:opacity]]          = $game_player.opacity
     data[VMS::PACKET_KEYS[:stop_animation]]   = $game_player.step_anime
-    data[VMS::PACKET_KEYS[:animation]]        = $scene.spriteset.getAnimationSprites if $scene.is_a?(Scene_Map) && $scene.spriteset
+    data[VMS::PACKET_KEYS[:animation]]        = $scene.spriteset.vms_get_animation_sprites if $scene.is_a?(Scene_Map) && $scene.spriteset
     data[VMS::PACKET_KEYS[:jump_offset]]      = $game_player.screen_y_ground - $game_player.screen_y - $game_player.y_offset
     data[VMS::PACKET_KEYS[:jumping_on_spot]]  = $game_player.jumping_on_spot
     data[VMS::PACKET_KEYS[:surfing]]          = $PokemonGlobal.surfing
