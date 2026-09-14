@@ -45,7 +45,7 @@ module VMS
 
   def self.decrypt(data, instance = nil)
     return data unless data.is_a?(Hash)
-    return data unless data[:class] # Safety check
+    return data unless data[:class]
 
     defaults = VMS::ENCRYPTION_DEFAULTS[data[:class].name]
     case data[:class]
@@ -67,19 +67,16 @@ module VMS
           if required_params.empty?
             instance ||= data[:class].new
           else
-            # For simplicity, assuming all required parameters have default values
             default_values = Hash[required_params.map { |param| nil }]
             instance ||= data[:class].new(*default_values)
           end
         end
       end
     end
-    # Sort numeric string keys to ensure correct array order
     sorted_keys = data.keys.sort_by do |k|
       if k.is_a?(String) && k.numeric?
         k.to_i
       else
-        # Non-numeric keys stay in original order (use a large number to sort them last)
         k == :class ? -1 : 999999
       end
     end

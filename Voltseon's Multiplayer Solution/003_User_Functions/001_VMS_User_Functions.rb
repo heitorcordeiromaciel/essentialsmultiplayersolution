@@ -154,42 +154,43 @@ module VMS
     $scene.miniupdate
   end
 
-  # Usage: VMS.event_deletion_possible?(player #<VMS::Player>) (returns true if the player's event can be deleted)
-  def self.event_deletion_possible?(player)
-    return false if player.rf_event.nil?
-    return false unless $scene.is_a?(Scene_Map)
-    event_map_id = player.rf_event[:event].map_id
-    return false unless $map_factory.areConnected?(event_map_id, $game_map.map_id)
-    return false if $scene.spriteset(event_map_id).nil?
-    return true
+  # Usage: VMS.force_delete_event(rf_event #<Hash>) (unconditionally deletes the specified
+  # Rf-created event, regardless of the current scene)
+  def self.force_delete_event(rf_event)
+    return if rf_event.nil?
+    event = rf_event[:event]
+    return if event.nil?
+    begin
+      Rf.delete_event(rf_event)
+    rescue StandardError
+      event.character_name = ""
+      event.through = true
+      event.erase
+    end
   end
 
   # Usage: VMS.get_cluster_list (requests and returns a list of available clusters from the server)
   def self.get_cluster_list
     begin
-      # Determine connection parameters based on runtime server type
       host = $game_temp.vms[:using_external_server] ? VMS::EXTERNALHOST : VMS.target_host
       port = $game_temp.vms[:using_external_server] ? VMS::EXTERNALPORT : VMS::PORT
-      # Create temporary socket
       if VMS::USE_TCP
         socket = TCPSocket.new(host, port)
       else
         socket = UDPSocket.new
         socket.connect(host, port)
       end
-      
-      # Send list request
+
       message = Zlib::Deflate.deflate(Marshal.dump(["list_clusters"]), Zlib::BEST_SPEED)
       socket.send(message, 0)
-      
-      # Wait for response (with timeout)
-      timeout = 3.0 # 3 seconds timeout
+
+      timeout = 3.0
       start_time = Time.now
       cluster_list = nil
-      
+
       loop do
         data = socket.read_nonblock(65536, exception: false)
-        
+
         if data != :wait_readable && data != :wait_writable && !data.nil?
           data = Marshal.load(Zlib::Inflate.inflate(data))
           if data.is_a?(Array) && data[0] == :cluster_list
@@ -197,16 +198,15 @@ module VMS
             break
           end
         end
-        
-        # Timeout check
+
         if Time.now - start_time > timeout
           VMS.log("Cluster list request timed out", true)
           break
         end
-        
-        sleep(0.01) # Small delay to prevent busy waiting
+
+        sleep(0.01)
       end
-      
+
       socket.close
       return cluster_list || []
     rescue Errno::ECONNREFUSED, Errno::ECONNRESET

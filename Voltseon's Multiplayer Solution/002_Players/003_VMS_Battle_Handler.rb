@@ -2,7 +2,6 @@ module VMS
   def self.start_battle(player, type = :single, size = 6, seed = nil)
     old_party = $player.party
     begin
-      # In start_battle
       if seed.nil?
         seed_str = VMS.get_cluster_id.to_s
         if $player.id < player.id
@@ -18,48 +17,18 @@ module VMS
       $game_temp.vms[:seed] = seed
       $game_temp.vms[:battle_player] = player
       $game_temp.vms[:battle_type] = type
-      
-      # Party Selection Phase
+
       new_party = nil
-      # Always show selection screen for ordering, unless party is empty (which shouldn't happen)
       if $player.party.length > 0
         if VMS::ENABLE_TOURNAMENT_SELECTION && size && defined?(TournamentSelection)
           VMS.ensure_tournament_selection_installed
-          # z=99997, below TournamentSelection's own content viewport (z=99998,
-          # tournament_selection.rb:104-105) -- pbFadeOutIn's overlay defaults
-          # to z=99999 and stays fully opaque for the whole yielded block, not
-          # just during the transition itself. RGSS breaks equal-z ties by
-          # creation order (newer on top), which is why the vanilla
-          # PokemonParty_Scene path below works unmodified -- its own
-          # viewport is ALSO z=99999 but created later, inside the block, so
-          # it draws over the fade overlay. TournamentSelection's viewport is
-          # one z-level BELOW the overlay's default, so no creation-order
-          # tie-break ever applies -- it stayed strictly hidden underneath
-          # for the entire session, which is what looked like a permanent
-          # black screen.
           pbFadeOutIn(99997) {
             TournamentSelection.new(size, player.trainer_type, "#{VMS::VMS_PREVIEW_PREFIX}#{player.id}", 0, true, false)
           }
           new_party = $player.party.dup
-          # Tournament Selection mutates $player.party in place and stashes
-          # the remainder + a flag for ITS OWN pbEndOfBattle/skip_battle
-          # restoration hooks -- VMS already owns a full independent
-          # save/restore via old_party (see below), so undo the mutation and
-          # clear those flags immediately to prevent double-restoration
-          # after the battle ends.
           $player.party = old_party
           $PokemonGlobal.notSelectedParty = nil
           $PokemonGlobal.tournamentSelection = false
-          # Tournament Selection's own confirm gate (tournament_selection.rb
-          # :603) allows finishing with FEWER than poke_max if the trainer
-          # owns fewer Pokemon than that -- unlike the vanilla screen below,
-          # whose ruleset.setNumber(size) strictly enforces an exact count.
-          # A short party is harmless for singles (@sideSizes only ever
-          # needs 1), but for a double battle (@sideSizes needs 2 per side,
-          # set purely from `type` in TrainerBattle.start_core_VMS,
-          # independent of party length) an asymmetric short side is
-          # exactly the kind of mismatch that manifests as a desync.
-          # Treat it the same as a cancelled/invalid vanilla selection.
           new_party = nil if new_party.length < size
         else
           ruleset = PokemonRuleSet.new
@@ -81,16 +50,13 @@ module VMS
         end
       end
 
-      # Sync selection - send the party array directly (no serialization)
       $game_temp.vms[:state] = [:battle_selection, player.id, new_party]
       if !VMS.await_player_state(player, :battle_selection, _INTL("Waiting for {1} to select Pokémon...", player.name), true, true)
         $game_temp.vms[:state] = [:idle, nil]
         return
       end
-      # Receive the party array directly (no deserialization needed)
       filtered_opponent_party = player.state[2]
 
-      # Validate opponent party
       if filtered_opponent_party.nil? || !filtered_opponent_party.is_a?(Array) || filtered_opponent_party.empty?
         VMS.message(_INTL("Unable to start battle - opponent has no valid Pokémon."))
         $game_temp.vms[:state] = [:idle, nil]
@@ -108,7 +74,7 @@ module VMS
 
       $player.party = old_party
       $player.party.each { |pkmn| pkmn.heal if pkmn }
-      
+
       $game_temp.vms[:battle_player] = nil
       $game_temp.vms[:battle_type] = nil
       $game_temp.vms[:state] = [:idle, nil]
@@ -137,7 +103,6 @@ class Battle
       seed = seed.to_i unless seed.is_a?(Integer)
       @vms_random_calls ||= 0
       @vms_random_calls += 1
-      # Use turnCount and call counter to ensure unique but synced results
       srand(seed + (@turnCount * 1000) + @vms_random_calls)
       return rand(x)
     end
@@ -146,7 +111,7 @@ class Battle
 
   alias vms_pbCommandPhaseLoop pbCommandPhaseLoop unless method_defined?(:vms_pbCommandPhaseLoop)
   def pbCommandPhaseLoop(isPlayer)
-    @vms_random_calls = 0 if isPlayer # Reset counter for the new turn
+    @vms_random_calls = 0 if isPlayer
     vms_pbCommandPhaseLoop(isPlayer)
     if VMS.is_connected? && isPlayer && !VMS.multibattle_active?
       is_single = $game_temp.vms[:battle_type] != :double
@@ -217,7 +182,6 @@ class Battle
       $game_temp.vms[:state] = [:battle_command, $game_temp.vms[:state][1], @turnCount, picks, mega_idx_0, mega_idx_2, z_idx_0, z_idx_2, dyna_idx_0, dyna_idx_2, tera_idx_0, tera_idx_2]
     end
 
-    # --- Multibattle branch: each player controls only battler 0 (local layout) ---
     if VMS.is_connected? && isPlayer && VMS.multibattle_active?
       choice = @choices[0]
       raw_target = choice ? choice[3] : nil
@@ -371,8 +335,6 @@ class Battle
                 end
                 @battle.pbRegisterMove(idxBattler, player.state[3][picks_idx][1], false)
                 @battle.pbRegisterTarget(idxBattler, target)
-                # New format: player.state[4-11] = [mega_0, mega_2, z_0, z_2, dyna_0, dyna_2, tera_0, tera_2]
-                # Their battler 0 (left) → our idxBattler 1, their battler 2 (right) → our idxBattler 3
                 if player.state.length >= 12
                   mega_0 = player.state[4]
                   mega_2 = player.state[5]
@@ -383,9 +345,7 @@ class Battle
                   tera_0 = player.state[10]
                   tera_2 = player.state[11]
 
-                  # Map: their battler 0 (L) → our battler 1 (L), their battler 2 (R) → our battler 3 (R)
                   if idxBattler == 1
-                    # Processing their battler 0 (their left = our left when facing them)
                     @battle.pbRegisterMegaEvolution(idxBattler) if mega_0 == 0
                     @battle.pbRegisterZMove(idxBattler) if z_0 == 0
                     @battle.pbRegisterDynamax(idxBattler) if dyna_0 == 0
@@ -394,7 +354,6 @@ class Battle
                       @battle.pbRegisterTerastallize(idxBattler)
                     end
                   elsif idxBattler == 3
-                    # Processing their battler 2 (their right = our right when facing them)
                     @battle.pbRegisterMegaEvolution(idxBattler) if mega_2 == 2
                     @battle.pbRegisterZMove(idxBattler) if z_2 == 2
                     @battle.pbRegisterDynamax(idxBattler) if dyna_2 == 2
@@ -405,11 +364,15 @@ class Battle
                   end
                 end
                 return
+              when :Call
+                msgwindow.visible = false
+                msgwindow.setText("")
+                @battle.pbDisplayPaused(_INTL("{1} has forfeited.", player_name))
+                @battle.decision = 1
+                return
               end
             end
           elsif opp_turn < @battle.turnCount
-            # Opponent is behind, we must wait for them to catch up
-            # This shouldn't happen often if both are in sync
           end
         end
 
@@ -427,23 +390,37 @@ class Battle
   end
 end
 
+class Battle::Scene
+  alias vms_pbCommandMenu pbCommandMenu unless method_defined?(:vms_pbCommandMenu)
+  def pbCommandMenu(idxBattler, firstAction)
+    in_vms_battle = VMS.is_connected? &&
+                    (!$game_temp.vms[:battle_player].nil? || $game_temp.vms[:mb_in_battle])
+    return vms_pbCommandMenu(idxBattler, firstAction) unless in_vms_battle
+
+    shadowTrainer = false
+    cmds = [
+      _INTL("What will\n{1} do?", @battle.battlers[idxBattler].name),
+      _INTL("Fight"),
+      _INTL("Bag"),
+      _INTL("Pokémon"),
+      (firstAction) ? _INTL("Run") : _INTL("Cancel")
+    ]
+    ret = pbCommandMenuEx(idxBattler, cmds, (firstAction) ? 0 : 1)
+    ret = -1 if ret == 3 && !firstAction
+    return ret
+  end
+end
+
 class TrainerBattle
   def self.start_core_VMS(*args)
     outcome_variable = $game_temp.battle_rules["outcomeVar"] || 1
-    # Skip battle if the player has no able Pokémon, or if holding Ctrl in Debug mode
     if BattleCreationHelperMethods.skip_battle?
       return BattleCreationHelperMethods.skip_battle(outcome_variable, true)
     end
-    # Record information about party Pokémon to be used at the end of battle (e.g.
-    # comparing levels for an evolution check)
     EventHandlers.trigger(:on_start_battle)
-    # Generate information for the foes
     foe_trainers, foe_items, foe_party, foe_party_starts = TrainerBattle.generate_foes(*args)
-    # Generate information for the player and partner trainer(s)
     player_trainers, ally_items, player_party, player_party_starts = BattleCreationHelperMethods.set_up_player_trainers(foe_party)
-    # Create the battle scene (the visual side of it)
     scene = BattleCreationHelperMethods.create_battle_scene
-    # Create the battle class (the mechanics side of it)
     battle = Battle.new(scene, player_party, foe_party, player_trainers, foe_trainers)
     battle.battleAI     = Battle::VMS_AI.new(battle)
     battle.party1starts = player_party_starts

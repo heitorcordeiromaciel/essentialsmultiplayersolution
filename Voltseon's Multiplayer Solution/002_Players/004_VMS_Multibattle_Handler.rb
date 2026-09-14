@@ -1,9 +1,7 @@
 module VMS
   GLOBAL_BATTLER_OWNER = { [0,0]=>0, [0,1]=>2, [1,0]=>1, [1,1]=>3 }
-  SLOT_FOR_GLOBAL      = GLOBAL_BATTLER_OWNER.invert   # {0=>[0,0], 2=>[0,1], 1=>[1,0], 3=>[1,1]}
+  SLOT_FOR_GLOBAL      = GLOBAL_BATTLER_OWNER.invert
 
-  # Local-to-global battler index map keyed by [team, slot].
-  # Each player sets up the battle with themselves at local index 0.
   MB_INDEX_MAPS = {
     [0,0] => { 0=>0, 1=>1, 2=>2, 3=>3 },
     [0,1] => { 0=>2, 1=>1, 2=>0, 3=>3 },
@@ -18,19 +16,12 @@ module VMS
     [1,1] => "Team 1 (Slot B)"
   }
 
-  # -------------------------------------------------------------------------
-  # State helpers
-  # -------------------------------------------------------------------------
-
-  # Returns true when the local player is currently in any multibattle state.
   def self.multibattle_active?
     return false if $game_temp.nil? || $game_temp.vms.nil?
     st = $game_temp.vms[:state]
     return st.is_a?(Array) && st[0].to_s.start_with?("multibattle")
   end
 
-  # Returns the VMS::Player in the cluster whose state has the given
-  # team_idx (state[2]) and slot_idx (state[3]) in any multibattle state.
   def self.mb_get_player_for_global_battler(global_idx)
     target_team, target_slot = VMS::SLOT_FOR_GLOBAL[global_idx]
     return nil if target_team.nil?
@@ -43,7 +34,6 @@ module VMS
     return nil
   end
 
-  # Returns the VMS::Player in the lobby slot [team_idx, slot_idx].
   def self.mb_get_player_for_slot(lobby_id, team_idx, slot_idx)
     VMS.get_players.each do |player|
       st = player.state
@@ -55,14 +45,12 @@ module VMS
     return nil
   end
 
-  # Converts a local battler target index to the global index.
   def self.mb_local_to_global_target(local_target)
     return nil unless local_target.is_a?(Integer) && local_target >= 0
     l2g = $game_temp.vms[:mb_local_to_global]
     return l2g[local_target] || local_target
   end
 
-  # Resets all multibattle-specific keys in the vms hash.
   def self.mb_clear_local_state
     $game_temp.vms[:mb_lobby_id]           = nil
     $game_temp.vms[:mb_team_idx]           = nil
@@ -72,14 +60,6 @@ module VMS
     $game_temp.vms[:mb_global_to_local]    = {}
   end
 
-  # -------------------------------------------------------------------------
-  # Lobby discovery
-  # -------------------------------------------------------------------------
-
-  # Scans all visible players for active multibattle lobby states.
-  # Returns array of lobby descriptor hashes:
-  #   { lobby_id:, slots: {[team,slot]=>{player_id:,player_name:,ready:} or nil},
-  #     full:, all_ready: }
   def self.get_multibattle_lobbies
     lobby_map = {}
     VMS.get_players.each do |player|
@@ -107,12 +87,6 @@ module VMS
     return lobby_map.values
   end
 
-  # -------------------------------------------------------------------------
-  # Slot conflict resolution
-  # -------------------------------------------------------------------------
-
-  # If another player with a lower ID claims the same [team, slot], yield the
-  # slot to them and auto-reassign to a free one.
   def self.mb_resolve_slot_conflict
     my_team  = $game_temp.vms[:mb_team_idx]
     my_slot  = $game_temp.vms[:mb_slot_idx]
@@ -124,7 +98,6 @@ module VMS
       next unless st.is_a?(Array) && st.length >= 4
       next unless [:multibattle_lobby, :multibattle_ready].include?(st[0])
       next unless st[1] == lobby_id && st[2] == my_team && st[3] == my_slot
-      # They have the same slot — lower ID wins
       if player.id < $player.id
         VMS.mb_auto_reassign_slot(lobby_id, my_team)
         return
@@ -132,7 +105,6 @@ module VMS
     end
   end
 
-  # Find a free slot and claim it.
   def self.mb_auto_reassign_slot(lobby_id, preferred_team)
     taken = []
     VMS.get_players.each do |player|
@@ -165,11 +137,6 @@ module VMS
     VMS.log("MB: Slot conflict resolved, moved to #{label}")
   end
 
-  # -------------------------------------------------------------------------
-  # Lobby UI
-  # -------------------------------------------------------------------------
-
-  # Entry point called from the pause menu.
   def self.open_multibattle_menu
     unless VMS.is_connected?
       VMS.message(VMS::MB_NOT_CONNECTED_MESSAGE)
@@ -196,13 +163,12 @@ module VMS
     end
   end
 
-  # Create a new lobby. The creator picks their team and always takes slot 0.
   def self.create_multibattle_lobby
     lobby_id = rand(10000...99999)
     team_choices = [VMS::MB_TEAM_0_SLOT_0, VMS::MB_TEAM_1_SLOT_0, _INTL("Cancel")]
     choice = VMS.message(VMS::MB_SELECT_TEAM_MESSAGE, team_choices)
     return if choice.nil? || choice == 2
-    team_idx = choice   # 0 → Team 0, 1 → Team 1
+    team_idx = choice
     slot_idx = 0
     $game_temp.vms[:mb_lobby_id] = lobby_id
     $game_temp.vms[:mb_team_idx] = team_idx
@@ -212,7 +178,6 @@ module VMS
     VMS.mb_lobby_wait_loop(lobby_id)
   end
 
-  # Join an existing lobby. Shows open slots for the player to choose from.
   def self.join_multibattle_lobby(lobby_data)
     lobby_id = lobby_data[:lobby_id]
     if lobby_data[:full]
@@ -233,7 +198,6 @@ module VMS
     VMS.mb_lobby_wait_loop(lobby_id)
   end
 
-  # Polling loop shown while waiting for all 4 lobby slots to fill.
   def self.mb_lobby_wait_loop(lobby_id)
     start_time = Time.now
     msgwindow  = pbCreateMessageWindow
@@ -242,7 +206,6 @@ module VMS
       VMS.scene_update
       VMS.mb_resolve_slot_conflict
       lobby = VMS.get_multibattle_lobbies.find { |lb| lb[:lobby_id] == lobby_id }
-      # Build live display
       lines = ["Multi Battle Lobby #{lobby_id}"]
       [[0,0],[0,1],[1,0],[1,1]].each do |pair|
         entry      = lobby&.dig(:slots, pair)
@@ -258,14 +221,12 @@ module VMS
       lines << "" << "Press BACK to leave"
       msgwindow.setText(lines.join("\n"))
       msgwindow.update
-      # Cancel
       if Input.trigger?(Input::BACK)
         pbDisposeMessageWindow(msgwindow)
         $game_temp.vms[:state] = [:idle, nil]
         VMS.mb_clear_local_state
         return
       end
-      # Timeout
       if Time.now - start_time > VMS::MB_LOBBY_TIMEOUT
         pbDisposeMessageWindow(msgwindow)
         VMS.message(VMS::MB_LOBBY_TIMEOUT_MESSAGE)
@@ -273,7 +234,6 @@ module VMS
         VMS.mb_clear_local_state
         return
       end
-      # Lobby vanished
       if lobby.nil? && (Time.now - start_time) > 5
         pbDisposeMessageWindow(msgwindow)
         VMS.message(VMS::MB_LOBBY_TIMEOUT_MESSAGE)
@@ -287,7 +247,6 @@ module VMS
     VMS.mb_ready_phase(lobby_id)
   end
 
-  # Ready-up phase: player confirms readiness, then waits for all 4 to be ready.
   def self.mb_ready_phase(lobby_id)
     ready = pbConfirmMessage(VMS::MB_READY_CONFIRM_MESSAGE)
     unless ready
@@ -320,11 +279,6 @@ module VMS
     VMS.start_multibattle(lobby)
   end
 
-  # -------------------------------------------------------------------------
-  # Battle setup
-  # -------------------------------------------------------------------------
-
-  # Main entry point once all 4 players are ready. Every client runs this.
   def self.start_multibattle(lobby_data)
     old_party = nil
     begin
@@ -332,14 +286,12 @@ module VMS
       my_team  = $game_temp.vms[:mb_team_idx]
       my_slot  = $game_temp.vms[:mb_slot_idx]
 
-      # Compute index maps
       l2g = VMS::MB_INDEX_MAPS[[my_team, my_slot]]
       g2l = l2g.invert
       $game_temp.vms[:mb_local_battler_idx] = 0
       $game_temp.vms[:mb_local_to_global]   = l2g
       $game_temp.vms[:mb_global_to_local]   = g2l
 
-      # Check able Pokémon
       if $player.able_pokemon_count < 1
         VMS.message(VMS::MB_NO_ELIGIBLE_POKEMON)
         $game_temp.vms[:state] = [:idle, nil]
@@ -347,7 +299,6 @@ module VMS
         return
       end
 
-      # Party selection (exactly 3 Pokémon)
       new_party = nil
       $game_temp.vms[:state] = [:multibattle_selection, lobby_id, my_team, my_slot, nil]
       ruleset = PokemonRuleSet.new
@@ -365,14 +316,12 @@ module VMS
       end
       $game_temp.vms[:state] = [:multibattle_selection, lobby_id, my_team, my_slot, new_party]
 
-      # Wait for all 4 selections
       unless VMS.mb_await_all_selections(lobby_id)
         $game_temp.vms[:state] = [:idle, nil]
         VMS.mb_clear_local_state
         return
       end
 
-      # Collect parties keyed by global battler index
       parties_by_global = VMS.mb_collect_all_parties(lobby_data, lobby_id)
       unless parties_by_global
         VMS.message(VMS::BASIC_ERROR_MESSAGE)
@@ -381,12 +330,10 @@ module VMS
         return
       end
 
-      # Generate deterministic seed identical on all 4 clients
       seed = VMS.mb_generate_seed(lobby_id, parties_by_global)
       $game_temp.vms[:seed] = seed
       srand(seed)
 
-      # Resolve global battler indices for ally and both enemies
       ally_global    = l2g[2]
       enemy_a_global = l2g[1]
       enemy_b_global = l2g[3]
@@ -395,20 +342,15 @@ module VMS
       enemy_a_player = VMS.mb_get_player_for_global_battler(enemy_a_global)
       enemy_b_player = VMS.mb_get_player_for_global_battler(enemy_b_global)
 
-      # Two separate foe NPCTrainers — one per enemy player
       enemy_a_trainer       = NPCTrainer.new(enemy_a_player&.name || "???", enemy_a_player&.trainer_type || :POKEMONTRAINER_Red, 0)
       enemy_a_trainer.party = parties_by_global[enemy_a_global] || []
       enemy_b_trainer       = NPCTrainer.new(enemy_b_player&.name || "???", enemy_b_player&.trainer_type || :POKEMONTRAINER_Red, 0)
       enemy_b_trainer.party = parties_by_global[enemy_b_global] || []
 
-      # Set partner data directly — bypasses pbRegisterPartner, which tries to load
-      # the trainer from the database (fails for VMS player names).
-      # Format expected by Deluxe Battle Kit: [tr_type, tr_name, tr_id, party, items]
       ally_type = ally_player&.trainer_type || :POKEMONTRAINER_Red
       begin; ally_type = GameData::TrainerType.get(ally_type).id; rescue; end
       $PokemonGlobal.partner = [ally_type, ally_player&.name || "???", 0, parties_by_global[ally_global] || [], []]
 
-      # Temporarily replace local party with selected 3 Pokémon
       old_party = $player.party
       $player.party = new_party
 
@@ -429,8 +371,6 @@ module VMS
     end
   end
 
-  # Wait until all 4 players have a non-nil party in :multibattle_selection.
-  # state[4] is the party (may be nil while selecting, non-nil when done).
   def self.mb_await_all_selections(lobby_id)
     start_time = Time.now
     msgwindow  = pbCreateMessageWindow
@@ -459,8 +399,6 @@ module VMS
     return true
   end
 
-  # Collect all 4 parties keyed by global battler index.
-  # Returns nil if any party cannot be retrieved.
   def self.mb_collect_all_parties(lobby_data, lobby_id)
     parties = {}
     [[0,0],[0,1],[1,0],[1,1]].each do |pair|
@@ -482,7 +420,6 @@ module VMS
     return parties
   end
 
-  # Build player_party (self+ally) and foe_party (enemy0+enemy1) for this client.
   def self.mb_build_battle_parties(parties_by_global)
     l2g          = $game_temp.vms[:mb_local_to_global]
     player_party = (parties_by_global[l2g[0]] || []) + (parties_by_global[l2g[2]] || [])
@@ -490,7 +427,6 @@ module VMS
     return player_party, foe_party
   end
 
-  # Deterministic seed: hash of lobby_id + all 4 parties in global order 0-3.
   def self.mb_generate_seed(lobby_id, parties_by_global)
     seed_str = lobby_id.to_s
     [0, 1, 2, 3].each do |g|
@@ -501,14 +437,6 @@ module VMS
     return VMS.string_to_integer(seed_str)
   end
 
-  # -------------------------------------------------------------------------
-  # Command application helper (called by VMS_Multibattle_AI)
-  # -------------------------------------------------------------------------
-
-  # Apply a remote player's move pick to the local battle for +local_battler_idx+.
-  # pick = [choice_type, move_or_switch_idx, nil, item_target, global_target]
-  # remote_state = full state array; [5..9] = mega,z,dyna,tera booleans
-  # g2l = this client's global-to-local map
   def self.mb_apply_command(battle, local_battler_idx, pick, remote_state, g2l)
     return if pick.nil?
     case pick[0]
@@ -530,7 +458,6 @@ module VMS
         local_target = g2l[raw_global]
         battle.pbRegisterTarget(local_battler_idx, local_target) if local_target
       end
-      # Special move flags (state indices 5..8 = mega, z, dyna, tera)
       begin; battle.pbRegisterMegaEvolution(local_battler_idx)  if remote_state[6]; rescue; end
       begin; battle.pbRegisterZMove(local_battler_idx)          if remote_state[7]; rescue; end
       begin; battle.pbRegisterDynamax(local_battler_idx)        if remote_state[8]; rescue; end
@@ -539,11 +466,6 @@ module VMS
   end
 end
 
-# =============================================================================
-# Battle::VMS_Multibattle_AI
-# Handles the 3 non-local battlers (local indices 1, 2, 3) by polling the
-# corresponding remote players' multibattle_command / multibattle_switch states.
-# =============================================================================
 class Battle
   class VMS_Multibattle_AI < AI
     def pbDefaultChooseEnemyCommand(idxBattler)
@@ -561,7 +483,6 @@ class Battle
         VMS.scene_update rescue nil
         remote_player = VMS.mb_get_player_for_global_battler(global_idx)
 
-        # Disconnect / forfeit detection
         if remote_player.nil? || remote_player.state[0] == :idle
           @battle.pbDisplayPaused(_INTL("{1} has disconnected.", remote_name))
           @battle.decision = 1
@@ -578,10 +499,14 @@ class Battle
         end
 
         st = remote_player.state
-        # state layout: [:multibattle_command, lobby_id, team, slot, turn_count, pick, mega, z, dyna, tera]
         if st[0] == :multibattle_command && st[1] == lobby_id && st[4] == @battle.turnCount
           msgwindow.visible = false
           msgwindow.setText("")
+          if st[5]&.first == :Call
+            @battle.pbDisplayPaused(_INTL("{1} has forfeited.", remote_name))
+            @battle.decision = 1
+            return
+          end
           VMS.mb_apply_command(@battle, idxBattler, st[5], st, g2l)
           return
         end
@@ -627,7 +552,6 @@ class Battle
           return -1
         end
 
-        # state layout: [:multibattle_switch, lobby_id, team, slot, global_battler_idx, new_party_index]
         st = remote_player.state
         if st[0] == :multibattle_switch && st[1] == lobby_id && st[4] == global_idx
           msgwindow.visible = false
@@ -656,10 +580,6 @@ class Battle
   end
 end
 
-# =============================================================================
-# TrainerBattle.start_core_VMS_multibattle
-# Sets up and runs the multibattle with explicit parties. Always a double battle.
-# =============================================================================
 class TrainerBattle
   def self.start_core_VMS_multibattle(enemy_a, enemy_b)
     outcome_variable = $game_temp.battle_rules["outcomeVar"] || 1
@@ -667,13 +587,11 @@ class TrainerBattle
 
     EventHandlers.trigger(:on_start_battle)
 
-    # Foe side: two separate trainers with their own parties
     foe_trainers     = [enemy_a, enemy_b]
     foe_party        = (enemy_a.party || []) + (enemy_b.party || [])
     foe_party_starts = [0, (enemy_a.party || []).length]
     foe_items        = [[], []]
 
-    # Player side: local player + partner registered via pbRegisterPartner
     player_trainers, ally_items, player_party, player_party_starts =
       BattleCreationHelperMethods.set_up_player_trainers(foe_party)
 

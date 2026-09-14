@@ -17,15 +17,19 @@ class Game_Temp
       seed: 0,
       battle_player: nil,
       online_variables: {},
-      using_external_server: false,  # Runtime flag for which server type is being used
-      # Multi Battle state
+      using_external_server: false,
       mb_lobby_id: nil,
       mb_team_idx: nil,
       mb_slot_idx: nil,
       mb_local_battler_idx: nil,
       mb_local_to_global: {},
       mb_global_to_local: {},
-      mb_in_battle: false
+      mb_in_battle: false,
+      chat_log: [],
+      chat_hidden: false,
+      chat_dirty: false,
+      chat_input_open: false,
+      chat_last_activity: nil
     }
   end
 end
@@ -37,11 +41,22 @@ module Graphics
     def update(update_vms = true)
       vms_update
       if update_vms && VMS.is_connected?
-        # Update VMS
         VMS.update
-        # Clear events if necessary
         VMS.clean_up_events
       end
+      VMS.update_chat_overlay
+      VMS.check_chat_input
+    end
+  end
+end
+
+module Game
+  class << self
+    alias vms_save save unless method_defined?(:vms_save)
+
+    def save(*args, **kwargs)
+      VMS.strip_ghost_events_for_save if defined?(VMS) && VMS.is_connected?
+      vms_save(*args, **kwargs)
     end
   end
 end
@@ -183,7 +198,7 @@ class Game_Event
 end
 
 class Game_Player
-  
+
 end
 
 class Sprite_SurfBase
@@ -207,14 +222,12 @@ class Sprite_SurfBase
     surf_base_coords = (@connection_player.nil? ? $game_temp.surf_base_coords : @connection_player&.surf_base_coords)
     surf_base_coords = nil if surf_base_coords == [nil, nil]
     if !surf_check && !dive_check
-      # Just-in-time disposal of sprite
       if @sprite
         @sprite.dispose
         @sprite = nil
       end
       return
     end
-    # Just-in-time creation of sprite
     @sprite = Sprite.new(@viewport) if !@sprite
     return if !@sprite
     if surf_check
@@ -243,7 +256,7 @@ class Sprite_SurfBase
       @sprite.y = @parent_sprite.y
     end
     @sprite.ox      = cw / 2
-    @sprite.oy      = ch - 16   # Assume base needs offsetting
+    @sprite.oy      = ch - 16
     @sprite.oy      -= event.bob_height
     @sprite.z       = event.screen_z(ch) - 1
     @sprite.zoom_x  = @parent_sprite.zoom_x
@@ -258,7 +271,7 @@ class Sprite_NameTag
   TAG_FONT_SIZE = 14
   TAG_PAD_X     = 6
   TAG_PAD_Y     = 2
-  TAG_Y_OFFSET  = 40   # pixels above character bottom (character is ~32px tall)
+  TAG_Y_OFFSET  = 40
 
   def initialize(parent_sprite, viewport = nil)
     @parent_sprite = parent_sprite
@@ -314,8 +327,8 @@ class Sprite_NameTag
     tmp.font.size = TAG_FONT_SIZE
     tw = tmp.text_size(name).width
     tmp.dispose
-    bw  = tw + TAG_PAD_X * 2 + 2   # +2 for outline pixels
-    bh  = TAG_FONT_SIZE + TAG_PAD_Y * 2 + 4  # +4 for outline pixels
+    bw  = tw + TAG_PAD_X * 2 + 2
+    bh  = TAG_FONT_SIZE + TAG_PAD_Y * 2 + 4
     bmp = Bitmap.new(bw, bh)
     bmp.font.name  = "Power Green"
     bmp.font.size  = TAG_FONT_SIZE
@@ -344,7 +357,7 @@ class Sprite_Character < RPG::Sprite
       @reflection = Sprite_Reflection.new(self, viewport)
     end
     @surfbase = Sprite_SurfBase.new(self, viewport) if !@surfbase && (character == $game_player || (character.name && character.name[/vms_player_(\d+)$/i] rescue false))
-    if !@vms_nametag && character && character != $game_player
+    if !@vms_nametag && character && character != $game_player && VMS::SHOW_PLAYER_NAMETAGS
       begin
         @vms_nametag = Sprite_NameTag.new(self, viewport) if character.name && character.name[/vms_player_(\d+)$/i]
       rescue
@@ -474,21 +487,20 @@ MenuHandlers.add(:pause_menu, :vms, {
     menu.pbHideMenu
 
     if VMS::USE_EXTERNAL_SERVER
-      # When external server is enabled, show Local Play / Online Play choice
       mode_choices = ["Local Play", "Online Play", "Cancel"]
       mode_choice = VMS.message(_INTL("Choose a play mode:"), mode_choices, -1)
 
       case mode_choice
-      when 0 # Local Play (Integrated Server)
+      when 0
         $game_temp.vms[:using_external_server] = false
         choices = ["Host Game", "Join Server", "Cancel"]
         choice = VMS.message(VMS::MENU_CHOICES_MESSAGE, choices, -1)
         case choice
-        when 0 # Host Game
+        when 0
           VMS::IntegratedServer.start
           VMS.target_host = "127.0.0.1"
           VMS.join(0)
-        when 1 # Join Server
+        when 1
           VMS.target_host = "127.0.0.1"
           ip = pbEnterBoxName(_INTL("Enter Server IPv4"), 0, 15, VMS.target_host)
           if !ip.nil? && ip != ""
@@ -499,25 +511,23 @@ MenuHandlers.add(:pause_menu, :vms, {
             menu.pbRefresh
             next false
           end
-        when 2, -1 # Cancel
+        when 2, -1
           menu.pbShowMenu
           menu.pbRefresh
           next false
         end
 
-      when 1 # Online Play (External Server)
+      when 1
         $game_temp.vms[:using_external_server] = true
         choices = ["Create cluster", "Browse clusters", "Cancel"]
         choice = VMS.message(VMS::MENU_CHOICES_MESSAGE, choices, -1)
         case choice
-        when 0 # Create cluster
+        when 0
           VMS.join(rand(10000...99999))
-        when 1 # Browse clusters
-          # Get cluster list from server
+        when 1
           clusters = VMS.get_cluster_list
 
           if clusters.empty?
-            # No clusters available
             if pbConfirmMessage(VMS::NO_CLUSTERS_AVAILABLE_MESSAGE)
               VMS.join(rand(10000...99999))
             else
@@ -526,49 +536,44 @@ MenuHandlers.add(:pause_menu, :vms, {
               next false
             end
           else
-            # Build choice list with cluster info
             cluster_choices = []
             clusters.each do |cluster|
               cluster_choices.push("Cluster #{cluster[:id]} (#{cluster[:player_count]}/4 players)")
             end
             cluster_choices.push("Cancel")
 
-            # Show cluster selection
             cluster_choice = VMS.message(VMS::SELECT_CLUSTER_MESSAGE, cluster_choices, -1)
 
             if cluster_choice >= 0 && cluster_choice < clusters.length
-              # Join selected cluster
               selected_cluster = clusters[cluster_choice]
               VMS.join(selected_cluster[:id])
             else
-              # Cancel
               menu.pbShowMenu
               menu.pbRefresh
               next false
             end
           end
-        when 2, -1 # Cancel
+        when 2, -1
           menu.pbShowMenu
           menu.pbRefresh
           next false
         end
 
-      when 2, -1 # Cancel
+      when 2, -1
         menu.pbShowMenu
         menu.pbRefresh
         next false
       end
     else
-      # External server disabled - only show Integrated Server options
       $game_temp.vms[:using_external_server] = false
       choices = ["Host Game", "Join Server", "Cancel"]
       choice = VMS.message(VMS::MENU_CHOICES_MESSAGE, choices, -1)
       case choice
-      when 0 # Host Game
+      when 0
         VMS::IntegratedServer.start
         VMS.target_host = "127.0.0.1"
         VMS.join(0)
-      when 1 # Join Server
+      when 1
         VMS.target_host = "127.0.0.1"
         ip = pbEnterBoxName(_INTL("Enter Server IPv4"), 0, 15, VMS.target_host)
         if !ip.nil? && ip != ""
@@ -579,7 +584,7 @@ MenuHandlers.add(:pause_menu, :vms, {
           menu.pbRefresh
           next false
         end
-      when 2, -1 # Cancel
+      when 2, -1
         menu.pbShowMenu
         menu.pbRefresh
         next false
@@ -608,8 +613,8 @@ MenuHandlers.add(:pause_menu, :vms_disconnect, {
   }
 })
 
-MenuHandlers.add(:pause_menu, :vms_multibattle, {
-  "name"      => VMS::MB_MENU_NAME,
+MenuHandlers.add(:pause_menu, :vms_matchmaking, {
+  "name"      => VMS::MM_MENU_NAME,
   "order"     => 46,
   "condition" => proc {
     VMS::ACCESSIBLE_PROC.call &&
@@ -619,17 +624,30 @@ MenuHandlers.add(:pause_menu, :vms_multibattle, {
   },
   "effect" => proc { |menu|
     menu.pbHideMenu
-    VMS.open_multibattle_menu
+    VMS.open_matchmaking_menu
     menu.pbEndScene
     next true
   }
 })
 
-# ===========================================================================
-# Battle#pbOwnedByPlayer? override for multibattle
-# In multibattle, only battler index 0 is locally controlled. All others
-# (ally at 2, opponents at 1 and 3) are handled by VMS_Multibattle_AI.
-# ===========================================================================
+MenuHandlers.add(:pause_menu, :vms_gts, {
+  "name"      => _INTL("GTS"),
+  "order"     => 47,
+  "condition" => proc {
+    VMS::ENABLE_GTS &&
+    VMS::ACCESSIBLE_PROC.call &&
+    VMS::ACCESSIBLE_FROM_PAUSE_MENU &&
+    VMS.is_connected? &&
+    $game_temp.vms[:state][0] == :idle
+  },
+  "effect" => proc { |menu|
+    menu.pbHideMenu
+    VMS.open_gts_menu
+    menu.pbEndScene
+    next true
+  }
+})
+
 class Battle
   alias vms_mb_pbOwnedByPlayer? pbOwnedByPlayer? unless method_defined?(:vms_mb_pbOwnedByPlayer?)
 
@@ -638,5 +656,41 @@ class Battle
       return idxBattler == 0
     end
     return vms_mb_pbOwnedByPlayer?(idxBattler)
+  end
+end
+
+class PokemonEntryScene2
+  alias vms_pbStartScene pbStartScene unless method_defined?(:vms_pbStartScene)
+
+  def pbStartScene(helptext, minlength, maxlength, initialText, subject = 0, pokemon = nil)
+    vms_pbStartScene(helptext, minlength, maxlength, initialText, subject, pokemon)
+    needed_width = 24 * maxlength
+    max_start_x  = Graphics.width - needed_width - 44
+    start_x      = [160, max_start_x].min
+    @vms_x_offset = start_x - 160
+    return if @vms_x_offset == 0
+    maxlength.times { |i| @sprites["blank#{i}"].x += @vms_x_offset if @sprites["blank#{i}"] }
+    @refreshOverlay = true
+  end
+
+  alias vms_pbDoUpdateOverlay pbDoUpdateOverlay unless method_defined?(:vms_pbDoUpdateOverlay)
+
+  def pbDoUpdateOverlay
+    return vms_pbDoUpdateOverlay if @vms_x_offset.to_i == 0
+    return if !@refreshOverlay
+    @refreshOverlay = false
+    bgoverlay = @sprites["bgoverlay"].bitmap
+    bgoverlay.clear
+    pbSetSystemFont(bgoverlay)
+    textPositions = [
+      [@helptext, 160, 18, :left, Color.new(16, 24, 32), Color.new(168, 184, 184)]
+    ]
+    chars = @helper.textChars
+    x = 172 + @vms_x_offset
+    chars.each do |ch|
+      textPositions.push([ch, x, 54, :center, Color.new(16, 24, 32), Color.new(168, 184, 184)])
+      x += 24
+    end
+    pbDrawTextPositions(bgoverlay, textPositions)
   end
 end

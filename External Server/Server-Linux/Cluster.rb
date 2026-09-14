@@ -14,21 +14,24 @@ module VMS
 
     def add_player(player)
       @players[player.id] = player
-      # Mark all players as dirty so the new player gets a full sync
-      @players.each_value { |p| p.dirty = true }
-      @variables_dirty = true
+      send_snapshot_to(player)
+    end
+
+    def send_snapshot_to(player)
+      data = [[:online_variables, @online_variables]]
+      @players.each_value { |p| data.push(p.full_hash) }
+      binary = Zlib::Deflate.deflate(Marshal.dump(data), Config.compression_level)
+      @server.send_binary(binary, player.address, player.port, player.socket)
     end
 
     def remove_player(player)
       id = player.is_a?(Player) ? player.id : player
       @players.delete(id)
 
-      # Let all players know that the player has disconnected
       @players.each_value do |p|
         @server.send([:disconnect_player, id], p.address, p.port, p.socket)
       end
 
-      # If the cluster is empty, remove it
       if @players.length == 0
         @server.remove_cluster(@id)
       end
@@ -58,33 +61,28 @@ module VMS
     end
 
     def update_players
-      # Remove players that have not sent a heartbeat in a while
       @players.each_value do |player|
         if Time.now - player.heartbeat > Config.heartbeat_timeout
           @server.log("Player #{player.name} (#{player.id}) timed out.")
           remove_player(player)
         end
       end
- 
+
       return if @players.empty?
- 
-      # Construct data array once
+
       data = []
       data.push([:online_variables, @online_variables]) if @variables_dirty
-      
+
       @players.each_value do |player|
         data.push(player.to_hash(player.dirty))
       end
- 
-      # Compress once
-      binary = Zlib::Deflate.deflate(Marshal.dump(data), Zlib::BEST_COMPRESSION)
- 
-      # Broadcast binary to all players
+
+      binary = Zlib::Deflate.deflate(Marshal.dump(data), Config.compression_level)
+
       @players.each_value do |player|
         @server.send_binary(binary, player.address, player.port, player.socket)
       end
- 
-      # Clear dirty flags
+
       @players.each_value { |p| p.dirty = false }
       @variables_dirty = false
     end

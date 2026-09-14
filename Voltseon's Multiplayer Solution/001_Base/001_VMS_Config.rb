@@ -1,3 +1,5 @@
+require "zlib"
+
 module VMS
   # ===========
   # Debug
@@ -31,7 +33,10 @@ module VMS
   USE_TCP = false
   # The maximum number of players allowed in the integrated server.
   MAX_PLAYERS = 4
-  
+  # Zlib compression level for the integrated server's per-tick broadcast.
+  # BEST_SPEED keeps the hot path cheap; use BEST_COMPRESSION to trade CPU for smaller packets.
+  TICK_COMPRESSION_LEVEL = Zlib::BEST_SPEED
+
   # ===========
   # Connection
   # ===========
@@ -46,7 +51,12 @@ module VMS
   # Whether or not to sync the seed with the server. This means that all players will have the same random numbers.
   HEARTBEAT_TIMEOUT = 30
   SEED_SYNC = false
-  
+  # Whether the Integrated Server should reject connecting players whose
+  # game name/version (System.game_title/Settings::GAME_VERSION) don't
+  # match the host's own. Off by default; the External Server has its own
+  # equivalent config.ini setting.
+  CHECK_GAME_AND_VERSION = false
+
   # ===========
   # Events
   # ===========
@@ -86,6 +96,8 @@ module VMS
   SHOW_PING = true
   # Whether or not to show other players on the region map.
   SHOW_PLAYERS_ON_REGION_MAP = true
+  # Whether or not to show other players' name tags above their sprites.
+  SHOW_PLAYER_NAMETAGS = true
   # Default values for encryption.
   ENCRYPTION_DEFAULTS = {
     "Pokemon" => [:BULBASAUR, 5],
@@ -101,8 +113,79 @@ module VMS
   MB_LOBBY_TIMEOUT = 120
   # Maximum seconds to wait for all players to ready up once 4 slots are filled.
   MB_READY_TIMEOUT = 60
-  # The name of the Multi Battle option in the pause menu.
+  # The name of the Multi Battle option in the Matchmaking pause menu.
   MB_MENU_NAME = "Multi Battle"
+
+  # ===========
+  # Matchmaking
+  # ===========
+  # Maximum seconds to wait in the matchmaking queue before auto-cancelling.
+  MM_QUEUE_TIMEOUT = 120
+  # Maximum seconds to wait for a tentative match to mutually confirm before
+  # dropping it and returning to the queue
+  MM_MATCH_CONFIRM_TIMEOUT = 5
+  # The name of the Matchmaking option in the pause menu
+  MM_MENU_NAME = "Matchmaking"
+  # The name of the Battle Matchmaking option in the Matchmaking pause menu.
+  MM_BATTLE_MENU_NAME = "Battle Matchmaking"
+  # The name of the Trade Matchmaking option in the Matchmaking pause menu.
+  MM_TRADE_MENU_NAME = "Trade Matchmaking"
+
+  # ===========
+  # Chat
+  # ===========
+  # Whether or not the chat system is enabled at all. Set to false to disable it entirely
+  ENABLE_CHAT = true
+  # Maximum number of characters allowed in a single chat message.
+  # WARNING: Setting this to more than 15 will cause the message screen to ovrflow
+  # this is merely a visual issue and will not break anything, but will cause
+  # overly long messages to be unreadable while writing them
+  CHAT_MAX_MESSAGE_LENGTH = 15
+  # How many messages to retain in the chat log (older ones are dropped).
+  CHAT_LOG_MAX_MESSAGES = 50
+  # How many of the most recent lines the on-screen overlay shows at once.
+  CHAT_VISIBLE_LINES = 6
+  # Fixed pixel width of the chat overlay box.
+  CHAT_BOX_WIDTH = 260
+  # Opacity (0-255) of the chat overlay's background box.
+  CHAT_BOX_OPACITY = 160
+  # Corner radius (in pixels) of the chat overlay box.
+  CHAT_BOX_RADIUS = 8
+  # Width (in pixels) of the chat overlay box's outline. Set to 0 to disable.
+  CHAT_BOX_OUTLINE_WIDTH = 2
+  # Color of the chat overlay box's outline.
+  CHAT_BOX_OUTLINE_COLOR = Color.new(255, 255, 255, 200)
+  # The key that opens the chat message input box while on the map.
+  # Falls back to Input::CTRL if not defined.
+  CHAT_OPEN_KEY = begin
+    Input::CTRL
+  rescue NameError
+    Input::CTRL
+  end
+  # The name of the Toggle Chat option in the pause menu
+  CHAT_TOGGLE_MENU_NAME = "Toggle Chat"
+  # Seconds of no new messages before the chat overlay starts fading out.
+  # Set to 0 to disable fading
+  CHAT_FADE_DELAY = 10
+  # Seconds the fade-out itself takes once it starts.
+  CHAT_FADE_DURATION = 1.0
+
+  # ===========
+  # GTS
+  # ===========
+  # Whether or not the GTS is enabled at all. Set to false to disable it entirely
+  ENABLE_GTS = true
+  # Maximum number of simultaneous active GTS listings a single player may
+  # have (0 = unlimited). Enforced server-side.
+  GTS_MAX_LISTINGS_PER_PLAYER = 5
+  # Maximum number of simultaneous active GTS listings across all players
+  # (0 = unlimited). Enforced server-side.
+  GTS_MAX_LISTINGS_TOTAL = 200
+  # Optional money cost to create a GTS listing, charged client-side before
+  # the create request is sent and refunded if the server rejects it. Set to 0 to disable
+  GTS_LISTING_FEE = 0
+  # Server-only key used to encrypt the Integrated Server's GTS listings file.
+  GTS_ENCRYPTION_KEY = "change-me-to-a-random-secret-string"
 
   # ===========
   # Compatibility
@@ -145,6 +228,12 @@ module VMS
   def self.message(message="", choices=nil, default_choice=0)
     return if message.empty?
     return unless VMS::SHOW_PLAYER_MESSAGES
+    if choices.is_a?(Array)
+      max_choice_length = 30
+      choices = choices.map do |c|
+        (c.is_a?(String) && c.length > max_choice_length) ? (c[0, max_choice_length - 3] + "...") : c
+      end
+    end
     return pbMessage(message, choices, default_choice)
   end
 end

@@ -10,8 +10,6 @@ class Game_Event
   alias vms_sync_initialize initialize unless method_defined?(:vms_sync_initialize)
   def initialize(map_id, event, map = nil)
     vms_sync_initialize(map_id, event, map)
-    # Catch-up: if this tagged event was already erased by someone else
-    # before this client ever loaded the map it's on, apply that now.
     if VMS.is_connected? && vms_sync_tagged? && !@erased
       if VMS.get_variable("vmssync_erased_#{@map_id}_#{id}")
         $game_temp.vms[:vms_sync_applying_remote] = true
@@ -59,9 +57,6 @@ class Game_SelfSwitches
 end
 
 module VMS
-  # Diffs old vs. new online_variables and applies any changed VMSSync keys
-  # locally. Called from VMS.process right after online_variables is
-  # replaced wholesale with the server's current snapshot.
   def self.apply_vmssync_variables(old_vars, new_vars)
     return unless new_vars.is_a?(Hash)
     new_vars.each do |key, value|
@@ -100,18 +95,12 @@ module VMS
     end
   end
 
-  # Sets a Game Switch and relays it to every other
-  # connected client, Usage:
-  #   VMS.sync_switch(42, true)
   def self.sync_switch(number, value)
     $game_switches[number] = value
     $game_map.need_refresh = true if $game_map
     VMS.set_variable("vmssync_gs_#{number}", value) if VMS.is_connected?
   end
 
-  # Sets a Game Variable and relays it to every other connected client, Usage:
-  #   VMS.sync_variable(12, 5)
-  #   VMS.sync_variable(13, "Hello")
   def self.sync_variable(number, value)
     $game_variables[number] = value
     $game_map.need_refresh = true if $game_map
