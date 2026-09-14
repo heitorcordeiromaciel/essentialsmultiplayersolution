@@ -356,7 +356,7 @@ class Sprite_Character < RPG::Sprite
       @reflection = Sprite_Reflection.new(self, viewport)
     end
     @surfbase = Sprite_SurfBase.new(self, viewport) if !@surfbase && (character == $game_player || (character.name && character.name[/vms_player_(\d+)$/i] rescue false))
-    if !@vms_nametag && character && character != $game_player
+    if !@vms_nametag && character && character != $game_player && VMS::SHOW_PLAYER_NAMETAGS
       begin
         @vms_nametag = Sprite_NameTag.new(self, viewport) if character.name && character.name[/vms_player_(\d+)$/i]
       rescue

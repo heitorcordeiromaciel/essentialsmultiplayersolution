@@ -96,6 +96,8 @@ module VMS
   SHOW_PING = true
   # Whether or not to show other players on the region map.
   SHOW_PLAYERS_ON_REGION_MAP = true
+  # Whether or not to show other players' name tags above their sprites.
+  SHOW_PLAYER_NAMETAGS = true
   # Default values for encryption.
   ENCRYPTION_DEFAULTS = {
     "Pokemon" => [:BULBASAUR, 5],
