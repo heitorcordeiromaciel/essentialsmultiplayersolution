@@ -167,6 +167,21 @@ module VMS
       event.through = true
       event.erase
     end
+    VMS.dispose_orphaned_sprite(event)
+  end
+
+  # Usage: VMS.dispose_orphaned_sprite(event #<Game_Event>) (finds and disposes
+  # the Sprite_Character for +event+ in the current spriteset, if any)
+  def self.dispose_orphaned_sprite(event)
+    return unless $scene.is_a?(Scene_Map) && $scene.spriteset
+    sprites = $scene.spriteset.instance_variable_get(:@character_sprites)
+    return unless sprites
+    sprites.reject! do |sprite|
+      next false unless sprite && sprite.character.equal?(event)
+      sprite.dispose unless sprite.disposed?
+      true
+    end
+  rescue StandardError
   end
 
   # Usage: VMS.get_cluster_list (requests and returns a list of available clusters from the server)

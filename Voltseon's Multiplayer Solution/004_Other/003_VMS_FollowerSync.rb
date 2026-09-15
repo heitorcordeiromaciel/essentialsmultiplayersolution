@@ -11,7 +11,11 @@ module VMS
               data[VMS::PACKET_KEYS[:follower]] = [
                 ev.x, ev.y, ev.real_x, ev.real_y, ev.direction, ev.pattern, ev.character_name, ev.opacity
               ]
+            else
+              data[VMS::PACKET_KEYS[:follower]] = nil
             end
+          else
+            data[VMS::PACKET_KEYS[:follower]] = nil
           end
         rescue StandardError => e
           VMS.log("FollowerSync: Error generating follower data: #{e.message}", true) rescue nil

@@ -113,7 +113,7 @@ class Battle
   def pbCommandPhaseLoop(isPlayer)
     @vms_random_calls = 0 if isPlayer
     vms_pbCommandPhaseLoop(isPlayer)
-    if VMS.is_connected? && isPlayer && !VMS.multibattle_active?
+    if VMS.is_connected? && isPlayer && !VMS.multibattle_active? && !$game_temp.vms[:battle_player].nil?
       is_single = $game_temp.vms[:battle_type] != :double
       battler_indices = is_single ? [0] : [0, 2]
       picks = []
