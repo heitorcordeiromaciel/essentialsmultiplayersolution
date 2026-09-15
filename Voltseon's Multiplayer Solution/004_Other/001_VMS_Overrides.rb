@@ -62,15 +62,14 @@ module Game
 end
 
 class AnimationSprite < RPG::Sprite
+  alias_method :vms_animationSprite_initialize, :initialize unless method_defined?(:vms_animationSprite_initialize)
+
   def initialize(animID, map, tileX, tileY, viewport = nil, tinting = false, height = 3, owner = true)
+    vms_animationSprite_initialize(animID, map, tileX, tileY, viewport, tinting, height)
     @owner   = owner
     @animID  = animID
-    @map     = map
-    @tileX   = tileX
-    @tileY   = tileY
     @tinting = tinting
     @height  = height
-    super(viewport)
   end
 
   def owner;        return @owner;         end
