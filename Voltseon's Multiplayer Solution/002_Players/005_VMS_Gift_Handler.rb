@@ -1,4 +1,24 @@
 module VMS
+  # Usage: VMS.gift_pocket_enabled?(item #<Symbol>) (returns whether +item+'s
+  # Bag pocket is allowed to be gifted, per VMS::GIFT_POCKET_ENABLED)
+  def self.gift_pocket_enabled?(item)
+    data = GameData::Item.try_get(item)
+    return false unless data
+    VMS::GIFT_POCKET_ENABLED.fetch(data.pocket, true)
+  end
+
+  # Usage: VMS.choose_giftable_item (like pbChooseItem, but restricted to
+  # items whose pocket is enabled for gifting)
+  def self.choose_giftable_item
+    ret = nil
+    pbFadeOutIn do
+      scene = PokemonBag_Scene.new
+      screen = PokemonBagScreen.new(scene, $bag)
+      ret = screen.pbChooseItemScreen(proc { |item| VMS.gift_pocket_enabled?(item) })
+    end
+    ret
+  end
+
   def self.start_gift(player, is_sender, kind, item, amount)
     begin
       if !VMS.is_connected?

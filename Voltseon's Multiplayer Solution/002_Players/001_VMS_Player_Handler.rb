@@ -235,7 +235,7 @@ module VMS
         gift_choice = VMS.message(VMS::GIFT_TYPE_CHOICE, [_INTL("Item"), _INTL("Money"), _INTL("Cancel")])
         case gift_choice
         when 0
-          item = pbChooseItem
+          item = VMS.choose_giftable_item
           next if item.nil? || item == :NONE
           next if $bag.quantity(item) <= 0
           params = ChooseNumberParams.new

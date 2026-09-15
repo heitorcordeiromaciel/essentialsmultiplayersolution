@@ -248,7 +248,7 @@ module VMS
   end
 
   def self.gts_list_item_menu
-    item = pbChooseItem
+    item = VMS.choose_giftable_item
     if item.nil? || item == :NONE || $bag.quantity(item) <= 0
       VMS.message(VMS::GTS_NO_LISTABLE_ITEMS_MESSAGE) if item.nil? || item == :NONE
       return

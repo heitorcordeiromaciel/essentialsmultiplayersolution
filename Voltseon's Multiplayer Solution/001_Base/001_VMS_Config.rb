@@ -188,6 +188,22 @@ module VMS
   GTS_ENCRYPTION_KEY = "change-me-to-a-random-secret-string"
 
   # ===========
+  # Gift
+  # ===========
+  # Whether items from each Bag pocket can be given away via the Gift interaction.
+  # or listed on the GTS
+  GIFT_POCKET_ENABLED = {
+    1 => true,  # Items
+    2 => true,  # Medicine
+    3 => true,  # Poké Balls
+    4 => false,  # TMs & HMs
+    5 => true,  # Berries
+    6 => true,  # Mail
+    7 => true,  #Battle Items
+    8 => false  # Key Items
+  }
+
+  # ===========
   # Compatibility
   # ===========
   # Enable Following Pokemon support? Requires Following Pokemon EX
