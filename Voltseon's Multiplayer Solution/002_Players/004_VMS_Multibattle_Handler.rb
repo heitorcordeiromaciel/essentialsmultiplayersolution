@@ -608,6 +608,8 @@ class TrainerBattle
     setBattleRule("noExp")
     setBattleRule("noMoney")
     setBattleRule("double")
+    setBattleRule("weather", :None)
+    setBattleRule("terrain", :None)
     begin
       setBattleRule("noBag")
     rescue
