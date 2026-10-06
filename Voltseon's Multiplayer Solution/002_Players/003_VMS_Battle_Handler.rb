@@ -22,8 +22,9 @@ module VMS
       if $player.party.length > 0
         if VMS::ENABLE_TOURNAMENT_SELECTION && size && defined?(TournamentSelection)
           VMS.ensure_tournament_selection_installed
+          VMS.write_tournament_parameters(size, type == :double)
           pbFadeOutIn(99997) {
-            TournamentSelection.new(size, player.trainer_type, "#{VMS::VMS_PREVIEW_PREFIX}#{player.id}", 0, true, false)
+            TournamentSelection.new(player.trainer_type, "#{VMS::VMS_PREVIEW_PREFIX}#{player.id}", 0, 0)
           }
           new_party = $player.party.dup
           $player.party = old_party
